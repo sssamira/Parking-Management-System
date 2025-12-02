@@ -12,19 +12,13 @@ const Register = () => {
     phone: '',
     driverLicense: '',
     address: '',
-    vehicles: [
-      {
-        licensePlate: '',
-        carType: '',
-        carModel: '',
-        carColor: '',
-        carYear: '',
-      },
-    ],
+    vehicles: [],
   });
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showNumberInput, setShowNumberInput] = useState(false);
+  const [numberOfVehicles, setNumberOfVehicles] = useState(1);
 
   const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'];
 
@@ -56,20 +50,39 @@ const Register = () => {
     }
   };
 
+  const handleNumberSubmit = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if (numberOfVehicles < 1) {
+      setErrors({ submit: 'Minimum 1 vehicle is required. Please enter a number greater than 0' });
+      setNumberOfVehicles(1);
+      return;
+    }
+    
+    // Create array of empty vehicle forms
+    const newVehicles = Array.from({ length: numberOfVehicles }, () => ({
+      licensePlate: '',
+      carType: '',
+      carModel: '',
+      carColor: '',
+      carYear: '',
+    }));
+    
+    console.log('Creating vehicles:', numberOfVehicles, newVehicles);
+    
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      vehicles: newVehicles,
+    }));
+    setShowNumberInput(false);
+    setErrors({});
+  };
+
   const addVehicle = () => {
-    setFormData({
-      ...formData,
-      vehicles: [
-        ...formData.vehicles,
-        {
-          licensePlate: '',
-          carType: '',
-          carModel: '',
-          carColor: '',
-          carYear: '',
-        },
-      ],
-    });
+    setShowNumberInput(true);
   };
 
   const removeVehicle = (index) => {
@@ -96,8 +109,8 @@ const Register = () => {
     if (!formData.address.trim()) newErrors.address = 'Address is required';
 
     // Validate vehicles
-    if (formData.vehicles.length === 0) {
-      newErrors.vehicles = 'At least one vehicle is required';
+    if (!formData.vehicles || formData.vehicles.length === 0) {
+      newErrors.vehicles = 'Please add at least one vehicle';
     } else {
       formData.vehicles.forEach((vehicle, index) => {
         if (!vehicle.licensePlate.trim()) {
@@ -334,18 +347,91 @@ const Register = () => {
 
             {/* Vehicle Information */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center border-b pb-2">
-                <h3 className="text-lg font-semibold text-gray-800">Vehicle Information</h3>
-                <button
-                  type="button"
-                  onClick={addVehicle}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  + Add Vehicle
-                </button>
+              <div className="border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Vehicle Information</h3>
+                {!showNumberInput && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      How many vehicles do you want to add?
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addVehicle}
+                      className="px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      Select Number of Vehicles
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {formData.vehicles.map((vehicle, index) => (
+              {/* Number Input Form */}
+              {showNumberInput && formData.vehicles.length === 0 && (
+                <div className="mb-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <h4 className="text-md font-semibold mb-3 text-gray-800">
+                    How many vehicles do you want to add?
+                  </h4>
+                  <div className="flex items-end gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Vehicles (Minimum: 1)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={numberOfVehicles}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (value < 1) {
+                            setNumberOfVehicles(1);
+                          } else {
+                            setNumberOfVehicles(value);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value) || 1;
+                          if (value < 1) {
+                            setNumberOfVehicles(1);
+                          }
+                        }}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="Enter number (minimum 1)"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        You can add as many vehicles as you want (minimum 1)
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleNumberSubmit}
+                        className="px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        Continue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNumberInput(false);
+                          setNumberOfVehicles(1);
+                        }}
+                        className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Vehicle Detail Boxes - Only show after Continue is clicked */}
+              {formData.vehicles && formData.vehicles.length > 0 && !showNumberInput && (
+                <div className="space-y-4 mt-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                    Vehicle Details ({formData.vehicles.length} vehicle{formData.vehicles.length > 1 ? 's' : ''})
+                  </h4>
+                  {formData.vehicles.map((vehicle, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-md font-medium text-gray-700">
@@ -477,7 +563,9 @@ const Register = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
@@ -506,4 +594,5 @@ const Register = () => {
 };
 
 export default Register;
+
 

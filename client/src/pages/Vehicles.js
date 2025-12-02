@@ -8,6 +8,8 @@ const Vehicles = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showNumberInput, setShowNumberInput] = useState(false);
+  const [numberOfVehicles, setNumberOfVehicles] = useState(1);
   const [editingVehicle, setEditingVehicle] = useState(null);
   const [formData, setFormData] = useState({
     licensePlate: '',
@@ -16,6 +18,8 @@ const Vehicles = () => {
     carColor: '',
     carYear: '',
   });
+  const [bulkVehicles, setBulkVehicles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'];
 
@@ -45,6 +49,70 @@ const Vehicles = () => {
     });
   };
 
+  const handleBulkVehicleChange = (index, field, value) => {
+    const updated = [...bulkVehicles];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setBulkVehicles(updated);
+  };
+
+  const handleNumberSubmit = (e) => {
+    e.preventDefault();
+    if (numberOfVehicles < 1) {
+      setError('Minimum 1 vehicle is required. Please enter a number greater than 0');
+      setNumberOfVehicles(1);
+      return;
+    }
+    
+    // Create array of empty vehicle forms
+    const newVehicles = Array.from({ length: numberOfVehicles }, () => ({
+      licensePlate: '',
+      carType: '',
+      carModel: '',
+      carColor: '',
+      carYear: '',
+    }));
+    setBulkVehicles(newVehicles);
+    setShowNumberInput(false);
+    setShowAddForm(true);
+    setError('');
+  };
+
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    // Validate all vehicles
+    for (let i = 0; i < bulkVehicles.length; i++) {
+      const vehicle = bulkVehicles[i];
+      if (!vehicle.licensePlate || !vehicle.carType || !vehicle.carModel || !vehicle.carColor || !vehicle.carYear) {
+        setError(`Please fill all fields for Vehicle ${i + 1}`);
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    try {
+      // Add vehicles one by one
+      for (const vehicle of bulkVehicles) {
+        await api.post('/vehicles', vehicle);
+      }
+      
+      // Reset form
+      setBulkVehicles([]);
+      setShowAddForm(false);
+      setNumberOfVehicles(1);
+      fetchVehicles();
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to add vehicles');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -52,18 +120,16 @@ const Vehicles = () => {
     try {
       if (editingVehicle) {
         await api.put(`/vehicles/${editingVehicle._id}`, formData);
-      } else {
-        await api.post('/vehicles', formData);
+        setShowAddForm(false);
+        setEditingVehicle(null);
+        setFormData({
+          licensePlate: '',
+          carType: '',
+          carModel: '',
+          carColor: '',
+          carYear: '',
+        });
       }
-      setShowAddForm(false);
-      setEditingVehicle(null);
-      setFormData({
-        licensePlate: '',
-        carType: '',
-        carModel: '',
-        carColor: '',
-        carYear: '',
-      });
       fetchVehicles();
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to save vehicle');
@@ -97,7 +163,10 @@ const Vehicles = () => {
 
   const cancelForm = () => {
     setShowAddForm(false);
+    setShowNumberInput(false);
     setEditingVehicle(null);
+    setBulkVehicles([]);
+    setNumberOfVehicles(1);
     setFormData({
       licensePlate: '',
       carType: '',
@@ -144,22 +213,14 @@ const Vehicles = () => {
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">My Vehicles</h1>
-            <button
-              onClick={() => {
-                setShowAddForm(!showAddForm);
-                setEditingVehicle(null);
-                setFormData({
-                  licensePlate: '',
-                  carType: '',
-                  carModel: '',
-                  carColor: '',
-                  carYear: '',
-                });
-              }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {showAddForm ? 'Cancel' : '+ Add Vehicle'}
-            </button>
+            {!showAddForm && !showNumberInput && (
+              <button
+                onClick={() => setShowNumberInput(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                + Add Vehicle
+              </button>
+            )}
           </div>
 
           {error && (
@@ -168,10 +229,180 @@ const Vehicles = () => {
             </div>
           )}
 
-          {showAddForm && (
+          {/* Number Input Form */}
+          {showNumberInput && !showAddForm && (
+            <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-blue-50">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                How many vehicles do you want to add?
+              </h2>
+              <form onSubmit={handleNumberSubmit} className="flex items-end gap-4">
+                <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Vehicles (Minimum: 1)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={numberOfVehicles}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (value < 1) {
+                            setNumberOfVehicles(1);
+                          } else {
+                            setNumberOfVehicles(value);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value) || 1;
+                          if (value < 1) {
+                            setNumberOfVehicles(1);
+                          }
+                        }}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="Enter number (minimum 1)"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        You can add as many vehicles as you want (minimum 1)
+                      </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNumberInput(false);
+                      setNumberOfVehicles(1);
+                    }}
+                    className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Bulk Vehicle Forms */}
+          {showAddForm && bulkVehicles.length > 0 && (
+            <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-gray-50">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Add {bulkVehicles.length} Vehicle{bulkVehicles.length > 1 ? 's' : ''}
+                </h2>
+                <button
+                  onClick={cancelForm}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+              <form onSubmit={handleBulkSubmit} className="space-y-6">
+                {bulkVehicles.map((vehicle, index) => (
+                  <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Vehicle {index + 1}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          License Plate *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={vehicle.licensePlate}
+                          onChange={(e) => handleBulkVehicleChange(index, 'licensePlate', e.target.value.toUpperCase())}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm uppercase"
+                          style={{ textTransform: 'uppercase' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Car Type *
+                        </label>
+                        <select
+                          required
+                          value={vehicle.carType}
+                          onChange={(e) => handleBulkVehicleChange(index, 'carType', e.target.value)}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        >
+                          <option value="">Select car type</option>
+                          {carTypes.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Car Model *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={vehicle.carModel}
+                          onChange={(e) => handleBulkVehicleChange(index, 'carModel', e.target.value)}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Car Color *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={vehicle.carColor}
+                          onChange={(e) => handleBulkVehicleChange(index, 'carColor', e.target.value)}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Car Year *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1900"
+                          max={new Date().getFullYear() + 1}
+                          value={vehicle.carYear}
+                          onChange={(e) => handleBulkVehicleChange(index, 'carYear', e.target.value)}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Adding Vehicles...' : `Add ${bulkVehicles.length} Vehicle${bulkVehicles.length > 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Single Vehicle Edit Form */}
+          {showAddForm && editingVehicle && bulkVehicles.length === 0 && (
             <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-gray-50">
               <h2 className="text-xl font-semibold mb-4">
-                {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
+                Edit Vehicle
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -278,7 +509,7 @@ const Vehicles = () => {
             <div className="text-center py-12">
               <p className="text-gray-500">No vehicles registered yet.</p>
               <button
-                onClick={() => setShowAddForm(true)}
+                onClick={() => setShowNumberInput(true)}
                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
                 Add Your First Vehicle
@@ -329,22 +560,9 @@ const Vehicles = () => {
               <div className="mt-6 text-center">
                 <button
                   onClick={() => {
-                    setShowAddForm(true);
-                    setEditingVehicle(null);
-                    setFormData({
-                      licensePlate: '',
-                      carType: '',
-                      carModel: '',
-                      carColor: '',
-                      carYear: '',
-                    });
-                    // Scroll to form if it's already visible
-                    setTimeout(() => {
-                      const formElement = document.querySelector('.bg-gray-50');
-                      if (formElement) {
-                        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
+                    setShowNumberInput(true);
+                    setShowAddForm(false);
+                    setBulkVehicles([]);
                   }}
                   className="px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-md"
                 >
