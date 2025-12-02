@@ -32,9 +32,11 @@ app.get('/', (req, res) => {
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import vehicleRoutes from './routes/vehicleRoutes.js';
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 // app.use('/api/parking', parkingRoutes);
 
 // Error handling middleware

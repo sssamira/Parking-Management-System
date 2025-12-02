@@ -20,7 +20,7 @@ export const register = async (req, res) => {
       phone,
       driverLicense,
       address,
-      vehicle,
+      vehicles,
     } = req.body;
 
     // Check if user already exists
@@ -29,11 +29,35 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Check if license plate already exists
-    const licensePlateExists = await User.findOne({ 'vehicle.licensePlate': vehicle.licensePlate });
-    if (licensePlateExists) {
-      return res.status(400).json({ message: 'Vehicle with this license plate already registered' });
+    // Validate that at least one vehicle is provided
+    if (!vehicles || !Array.isArray(vehicles) || vehicles.length === 0) {
+      return res.status(400).json({ message: 'At least one vehicle is required' });
     }
+
+    // Check if any license plate already exists
+    const licensePlates = vehicles.map(v => v.licensePlate.toUpperCase());
+    const existingVehicles = await User.find({
+      'vehicles.licensePlate': { $in: licensePlates }
+    });
+
+    if (existingVehicles.length > 0) {
+      const existingPlates = existingVehicles.flatMap(u => 
+        u.vehicles.map(v => v.licensePlate)
+      );
+      const duplicates = licensePlates.filter(lp => existingPlates.includes(lp));
+      return res.status(400).json({ 
+        message: `License plate(s) already registered: ${duplicates.join(', ')}` 
+      });
+    }
+
+    // Format vehicles array
+    const formattedVehicles = vehicles.map(vehicle => ({
+      licensePlate: vehicle.licensePlate.toUpperCase(),
+      carType: vehicle.carType,
+      carModel: vehicle.carModel,
+      carColor: vehicle.carColor,
+      carYear: vehicle.carYear,
+    }));
 
     // Create user
     const user = await User.create({
@@ -43,13 +67,7 @@ export const register = async (req, res) => {
       phone,
       driverLicense,
       address,
-      vehicle: {
-        licensePlate: vehicle.licensePlate.toUpperCase(),
-        carType: vehicle.carType,
-        carModel: vehicle.carModel,
-        carColor: vehicle.carColor,
-        carYear: vehicle.carYear,
-      },
+      vehicles: formattedVehicles,
     });
 
     if (user) {
@@ -60,7 +78,7 @@ export const register = async (req, res) => {
         phone: user.phone,
         driverLicense: user.driverLicense,
         address: user.address,
-        vehicle: user.vehicle,
+        vehicles: user.vehicles,
         token: generateToken(user._id),
         message: 'Account created successfully',
       });
@@ -106,7 +124,7 @@ export const login = async (req, res) => {
         phone: user.phone,
         driverLicense: user.driverLicense,
         address: user.address,
-        vehicle: user.vehicle,
+        vehicles: user.vehicles,
         role: user.role,
         token: generateToken(user._id),
         message: 'Login successful',
@@ -134,7 +152,7 @@ export const getMe = async (req, res) => {
       phone: user.phone,
       driverLicense: user.driverLicense,
       address: user.address,
-      vehicle: user.vehicle,
+      vehicles: user.vehicles,
       role: user.role,
       createdAt: user.createdAt,
     });

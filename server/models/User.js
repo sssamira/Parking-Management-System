@@ -41,38 +41,47 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     
-    // Vehicle Details
-    vehicle: {
-      licensePlate: {
-        type: String,
-        required: [true, 'Please provide your vehicle license plate'],
-        uppercase: true,
-        trim: true,
-        unique: true,
+    // Vehicle Details - Array of vehicles
+    vehicles: [
+      {
+        licensePlate: {
+          type: String,
+          required: [true, 'Please provide your vehicle license plate'],
+          uppercase: true,
+          trim: true,
+        },
+        carType: {
+          type: String,
+          required: [true, 'Please provide your car type'],
+          enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'],
+          trim: true,
+        },
+        carModel: {
+          type: String,
+          required: [true, 'Please provide your car model'],
+          trim: true,
+        },
+        carColor: {
+          type: String,
+          required: [true, 'Please provide your car color'],
+          trim: true,
+        },
+        carYear: {
+          type: Number,
+          required: [true, 'Please provide your car year'],
+          min: [1900, 'Invalid car year'],
+          max: [new Date().getFullYear() + 1, 'Invalid car year'],
+        },
+        isActive: {
+          type: Boolean,
+          default: true,
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
-      carType: {
-        type: String,
-        required: [true, 'Please provide your car type'],
-        enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'],
-        trim: true,
-      },
-      carModel: {
-        type: String,
-        required: [true, 'Please provide your car model'],
-        trim: true,
-      },
-      carColor: {
-        type: String,
-        required: [true, 'Please provide your car color'],
-        trim: true,
-      },
-      carYear: {
-        type: Number,
-        required: [true, 'Please provide your car year'],
-        min: [1900, 'Invalid car year'],
-        max: [new Date().getFullYear() + 1, 'Invalid car year'],
-      },
-    },
+    ],
     
     // Account Status
     isActive: {

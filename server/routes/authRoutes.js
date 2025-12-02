@@ -14,11 +14,12 @@ const registerValidation = [
   body('phone').trim().notEmpty().withMessage('Phone number is required'),
   body('driverLicense').trim().notEmpty().withMessage('Driver license number is required'),
   body('address').trim().notEmpty().withMessage('Address is required'),
-  body('vehicle.licensePlate').trim().notEmpty().withMessage('License plate is required'),
-  body('vehicle.carType').notEmpty().withMessage('Car type is required'),
-  body('vehicle.carModel').trim().notEmpty().withMessage('Car model is required'),
-  body('vehicle.carColor').trim().notEmpty().withMessage('Car color is required'),
-  body('vehicle.carYear').isInt({ min: 1900, max: new Date().getFullYear() + 1 }).withMessage('Valid car year is required'),
+  body('vehicles').isArray({ min: 1 }).withMessage('At least one vehicle is required'),
+  body('vehicles.*.licensePlate').trim().notEmpty().withMessage('License plate is required for all vehicles'),
+  body('vehicles.*.carType').notEmpty().withMessage('Car type is required for all vehicles'),
+  body('vehicles.*.carModel').trim().notEmpty().withMessage('Car model is required for all vehicles'),
+  body('vehicles.*.carColor').trim().notEmpty().withMessage('Car color is required for all vehicles'),
+  body('vehicles.*.carYear').isInt({ min: 1900, max: new Date().getFullYear() + 1 }).withMessage('Valid car year is required for all vehicles'),
   handleValidationErrors,
 ];
 
