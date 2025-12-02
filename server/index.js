@@ -16,10 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/parking-management';
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB Connected Successfully');
   })
@@ -53,7 +50,20 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
+});
+
+// Handle port already in use error
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Please:`);
+    console.error(`   1. Stop the process using port ${PORT}`);
+    console.error(`   2. Or change the PORT in your .env file`);
+    console.error(`   3. Or use: netstat -ano | findstr :${PORT} to find the process`);
+    process.exit(1);
+  } else {
+    throw error;
+  }
 });
 
