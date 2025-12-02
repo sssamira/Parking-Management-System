@@ -30,13 +30,8 @@ app.get('/', (req, res) => {
   res.json({ message: 'Parking Management System API is running!' });
 });
 
-// Import routes
-import authRoutes from './routes/authRoutes.js';
-import vehicleRoutes from './routes/vehicleRoutes.js';
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/vehicles', vehicleRoutes);
+// API Routes will be added here
+// app.use('/api/auth', authRoutes);
 // app.use('/api/parking', parkingRoutes);
 
 // Error handling middleware
