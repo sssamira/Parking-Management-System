@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import Vehicles from './pages/Vehicles';
 
 function App() {
   const user = localStorage.getItem('user');
@@ -24,16 +25,24 @@ function App() {
                   <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md text-center">
                     <h2 className="text-2xl font-semibold mb-4">Welcome back!</h2>
                     <p className="text-gray-600 mb-6">You are logged in.</p>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        window.location.reload();
-                      }}
-                      className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                    >
-                      Logout
-                    </button>
+                    <div className="space-x-4">
+                      <Link
+                        to="/vehicles"
+                        className="inline-block px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                      >
+                        Manage Vehicles
+                      </Link>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('token');
+                          localStorage.removeItem('user');
+                          window.location.reload();
+                        }}
+                        className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                      >
+                        Logout
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md text-center">
@@ -59,6 +68,7 @@ function App() {
           />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/vehicles" element={<Vehicles />} />
         </Routes>
       </div>
     </Router>
