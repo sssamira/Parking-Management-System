@@ -184,18 +184,51 @@ const Vehicles = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading vehicles...</p>
+      <div className="relative min-h-screen">
+        {/* Fixed Background */}
+        <div 
+          className="fixed inset-0 z-0"
+          style={{
+            backgroundImage: 'url(https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iA7GVdn9DpeY/v1/-1x-1.webp)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        ></div>
+        
+        {/* Overlay for better readability */}
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
+        
+        {/* Loading Content */}
+        <div className="relative z-10 min-h-screen flex items-center justify-center">
+          <div className="text-center bg-white bg-opacity-95 backdrop-blur-sm p-8 rounded-lg shadow-xl">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading vehicles...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="relative min-h-screen">
+      {/* Fixed Background */}
+      <div 
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: 'url(https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iA7GVdn9DpeY/v1/-1x-1.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      ></div>
+      
+      {/* Overlay for better readability */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
         <div className="mb-4 flex justify-between items-center">
           <Link
             to="/"
@@ -210,7 +243,7 @@ const Vehicles = () => {
             Logout
           </button>
         </div>
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white bg-opacity-95 backdrop-blur-sm shadow rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">My Vehicles</h1>
             {!showAddForm && !showNumberInput && (
@@ -572,6 +605,7 @@ const Vehicles = () => {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
