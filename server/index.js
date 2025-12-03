@@ -9,20 +9,31 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/parking-management';
 
+// Connect to MongoDB (non-blocking - server will start even if MongoDB fails)
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB Connected Successfully');
+    console.log(`📦 Database: ${mongoose.connection.name}`);
   })
   .catch((error) => {
     console.error('❌ MongoDB Connection Error:', error.message);
-    process.exit(1);
+    console.error('⚠️  Server will continue running, but database operations will fail.');
+    console.error('💡 To fix MongoDB connection:');
+    console.error('   1. Make sure MongoDB is running locally');
+    console.error('   2. Or use MongoDB Atlas (cloud) and update MONGODB_URI in .env');
+    console.error('   3. For local MongoDB without auth, use: mongodb://localhost:27017/parking-management');
+    console.error('   4. For MongoDB with auth, use: mongodb://username:password@localhost:27017/parking-management?authSource=admin');
+    // Server continues running even if MongoDB connection fails
   });
 
 // Routes
@@ -53,10 +64,12 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
+  console.log(`🔗 Frontend should connect to: http://localhost:${PORT}/api`);
 });
 
 // Handle port already in use error

@@ -19,7 +19,16 @@ const registerValidation = [
   body('vehicles.*.carType').notEmpty().withMessage('Car type is required for all vehicles'),
   body('vehicles.*.carModel').trim().notEmpty().withMessage('Car model is required for all vehicles'),
   body('vehicles.*.carColor').trim().notEmpty().withMessage('Car color is required for all vehicles'),
-  body('vehicles.*.carYear').isInt({ min: 1900, max: new Date().getFullYear() + 1 }).withMessage('Valid car year is required for all vehicles'),
+  body('vehicles.*.carYear')
+    .custom((value) => {
+      const year = parseInt(value, 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(year) || year < 1900 || year > currentYear + 1) {
+        throw new Error('Car year must be between 1900 and ' + (currentYear + 1));
+      }
+      return true;
+    })
+    .withMessage('Valid car year is required for all vehicles'),
   handleValidationErrors,
 ];
 

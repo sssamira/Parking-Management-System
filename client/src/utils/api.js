@@ -1,12 +1,40 @@
 import axios from 'axios';
 
+// Determine the base URL
+// In development, use relative URL to leverage React proxy, or use env variable
+// In production, use the environment variable or default
+const getBaseURL = () => {
+  // If REACT_APP_API_URL is set, use it (takes priority)
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In development, use relative URL to leverage proxy in package.json
+  // The proxy in package.json points to http://localhost:3001
+  // This allows the React dev server to proxy requests to the backend
+  if (process.env.NODE_ENV === 'development') {
+    return '/api';
+  }
+  
+  // Production fallback - use relative URL
+  return '/api';
+};
+
+const baseURL = getBaseURL();
+
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000, // 15 second timeout (increased for slower connections)
 });
+
+// Log API base URL for debugging
+console.log('🔗 API Base URL:', api.defaults.baseURL);
+console.log('🌐 Environment:', process.env.NODE_ENV);
+console.log('⚙️  REACT_APP_API_URL:', process.env.REACT_APP_API_URL || 'not set');
 
 // Request interceptor
 api.interceptors.request.use(

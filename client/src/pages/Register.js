@@ -147,7 +147,17 @@ const Register = () => {
     setLoading(true);
     try {
       const { confirmPassword, ...registerData } = formData;
-      const response = await api.post('/auth/register', registerData);
+      
+      // Convert carYear to number for each vehicle
+      const formattedData = {
+        ...registerData,
+        vehicles: registerData.vehicles.map(vehicle => ({
+          ...vehicle,
+          carYear: vehicle.carYear ? parseInt(vehicle.carYear, 10) : null,
+        })),
+      };
+      
+      const response = await api.post('/auth/register', formattedData);
       
       // Store token
       localStorage.setItem('token', response.data.token);
@@ -156,8 +166,47 @@ const Register = () => {
       // Redirect to home or dashboard
       navigate('/');
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
-      setErrors({ submit: errorMessage });
+      console.error('Registration error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        },
+      });
+      
+      // Handle validation errors from server
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const validationErrors = {};
+        error.response.data.errors.forEach(err => {
+          if (err.field) {
+            validationErrors[err.field] = err.message;
+          }
+        });
+        setErrors({ ...validationErrors, submit: error.response.data.message || 'Please fix the errors above' });
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        // Network error - server might not be running
+        const apiUrl = error.config?.baseURL || 'http://localhost:3001/api';
+        setErrors({ 
+          submit: `Cannot connect to server at ${apiUrl}. Please make sure the backend server is running. Check the console for the API URL being used.` 
+        });
+      } else if (error.code === 'ECONNREFUSED') {
+        setErrors({ 
+          submit: 'Connection refused. The server might not be running. Please start the backend server.' 
+        });
+      } else if (error.code === 'ECONNABORTED') {
+        setErrors({ submit: 'Request timeout. The server took too long to respond. Please try again.' });
+      } else {
+        // Handle other errors
+        const errorMessage = error.response?.data?.message || 
+                           error.message || 
+                           'Registration failed. Please try again.';
+        setErrors({ submit: errorMessage });
+      }
     } finally {
       setLoading(false);
     }

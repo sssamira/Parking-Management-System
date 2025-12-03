@@ -34,7 +34,22 @@ const Login = () => {
       // Redirect to home
       navigate('/');
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
+      console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message === 'Network Error' || error.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please make sure the backend server is running on port 3001.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);

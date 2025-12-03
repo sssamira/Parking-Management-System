@@ -52,11 +52,11 @@ export const register = async (req, res) => {
 
     // Format vehicles array
     const formattedVehicles = vehicles.map(vehicle => ({
-      licensePlate: vehicle.licensePlate.toUpperCase(),
+      licensePlate: vehicle.licensePlate ? vehicle.licensePlate.toUpperCase().trim() : '',
       carType: vehicle.carType,
-      carModel: vehicle.carModel,
-      carColor: vehicle.carColor,
-      carYear: vehicle.carYear,
+      carModel: vehicle.carModel ? vehicle.carModel.trim() : '',
+      carColor: vehicle.carColor ? vehicle.carColor.trim() : '',
+      carYear: parseInt(vehicle.carYear) || vehicle.carYear,
     }));
 
     // Create user
@@ -71,6 +71,10 @@ export const register = async (req, res) => {
     });
 
     if (user) {
+      console.log('✅ User created successfully:', user.email);
+      console.log('✅ Vehicles added:', user.vehicles.length);
+      console.log('✅ User saved to database with ID:', user._id);
+      
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -80,18 +84,30 @@ export const register = async (req, res) => {
         address: user.address,
         vehicles: user.vehicles,
         token: generateToken(user._id),
-        message: 'Account created successfully',
+        message: `Account created successfully! Your account with ${user.vehicles.length} vehicle(s) has been added to the database.`,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
     console.error('Registration error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      errors: error.errors,
+    });
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ message: messages.join(', ') });
+      return res.status(400).json({ 
+        message: messages.join(', '),
+        errors: Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message,
+        })),
+      });
     }
     
     // Handle duplicate key errors
@@ -102,7 +118,10 @@ export const register = async (req, res) => {
       });
     }
     
-    res.status(500).json({ message: 'Server error during registration' });
+    res.status(500).json({ 
+      message: 'Server error during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 };
 
@@ -113,10 +132,26 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
+
+    console.log('🔐 Login attempt for email:', email);
+
     // Check if user exists and get password
     const user = await User.findOne({ email }).select('+password');
 
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isPasswordMatch = await user.matchPassword(password);
+    
+    if (isPasswordMatch) {
+      console.log('✅ Login successful for:', email);
       res.json({
         _id: user._id,
         name: user.name,
@@ -130,10 +165,16 @@ export const login = async (req, res) => {
         message: 'Login successful',
       });
     } else {
+      console.log('❌ Invalid password for:', email);
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ message: 'Server error during login' });
   }
 };
