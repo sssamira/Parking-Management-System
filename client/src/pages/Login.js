@@ -10,6 +10,7 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -23,6 +24,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess(false);
 
     try {
       const response = await api.post('/auth/login', formData);
@@ -31,19 +33,39 @@ const Login = () => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data));
       
-      // Redirect to home
-      navigate('/');
+      // Show success message
+      setSuccess(true);
+      setError('');
+      
+      // Redirect to home after showing success message
+      setTimeout(() => {
+        navigate('/');
+      }, 1500); // 1.5 second delay to show success message
     } catch (error) {
       console.error('Login error:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error message:', error.message);
       
+      console.error('Login error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        },
+      });
+      
       let errorMessage = 'Login failed. Please try again.';
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
-      } else if (error.message === 'Network Error' || error.code === 'ECONNREFUSED') {
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.code === 'ECONNREFUSED') {
         errorMessage = 'Cannot connect to server. Please make sure the backend server is running on port 3001.';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.';
       } else if (error.response?.status === 500) {
@@ -79,6 +101,17 @@ const Login = () => {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {success && (
+            <div className="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="font-semibold">Login successful!</span>
+              </div>
+              <p className="mt-1 text-sm">Redirecting you to the home page...</p>
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
               {error}
