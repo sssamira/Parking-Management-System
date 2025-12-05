@@ -45,10 +45,13 @@ app.get('/', (req, res) => {
 import authRoutes from './routes/authRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import parkingRoutes from './routes/parkingRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/parking', parkingRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
