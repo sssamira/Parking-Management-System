@@ -31,7 +31,7 @@ const Login = () => {
       
       // Store token and user data
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       
       // Show success message
       setSuccess(true);

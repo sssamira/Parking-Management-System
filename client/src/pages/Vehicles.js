@@ -236,6 +236,21 @@ const Vehicles = () => {
           >
             ← Back to Home
           </Link>
+          <div className="flex gap-2"></div>
+            <Link
+              to="/feedback"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Submit Feedback
+            </Link>
+            <Link
+              to="/my-feedback"
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+            >
+              View My Feedback
+            </Link>
+
+    
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none"

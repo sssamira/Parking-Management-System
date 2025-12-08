@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Vehicles from './pages/Vehicles';
+import Feedback from './pages/Feedback';
+import MyFeedback from './pages/MyFeedback';
 
 function App() {
   const user = localStorage.getItem('user');
@@ -50,6 +52,7 @@ function App() {
                           }}
                           className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                         >
+                          
                           Logout
                         </button>
                       </div>
@@ -83,6 +86,8 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/vehicles" element={<Vehicles />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/my-feedback" element={<MyFeedback />} />
           </Routes>
         </div>
       </div>
