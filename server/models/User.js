@@ -83,6 +83,44 @@ const userSchema = new mongoose.Schema(
       },
     ],
     
+    // Search Queries - Store booking search details
+    searchQueries: [{
+      location: {
+        type: String,
+        trim: true
+      },
+      vehicleType: {
+        type: String,
+        enum: ['Car', 'Bike', 'All', ''],
+        default: ''
+      },
+      date: {
+        type: Date
+      },
+      startTime: {
+        type: Date
+      },
+      endTime: {
+        type: Date
+      },
+      carModel: {
+        type: String,
+        trim: true
+      },
+      driverName: {
+        type: String,
+        trim: true
+      },
+      licenseNumber: {
+        type: String,
+        trim: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    
     // Account Status
     isActive: {
       type: Boolean,
@@ -112,7 +150,21 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare password
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  if (!this.password) {
+    console.error('❌ Password field is missing in user object');
+    return false;
+  }
+  if (!enteredPassword) {
+    console.error('❌ Entered password is missing');
+    return false;
+  }
+  try {
+    const result = await bcrypt.compare(enteredPassword, this.password);
+    return result;
+  } catch (error) {
+    console.error('❌ Bcrypt compare error:', error);
+    return false;
+  }
 };
 
 const User = mongoose.model('User', userSchema);

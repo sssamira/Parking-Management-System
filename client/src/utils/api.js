@@ -55,10 +55,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized - clear token and redirect to login
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    // Only auto-redirect if it's not already being handled by the component
+    // Components should handle 401 errors themselves to show proper error messages
+    if (error.response?.status === 401 && !error.config?.skipAuthRedirect) {
+      // Only redirect if we're not already on the login page
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

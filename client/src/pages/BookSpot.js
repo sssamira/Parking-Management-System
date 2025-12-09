@@ -109,6 +109,60 @@ const BookSpot = () => {
     }
   };
 
+  const submitSearchDetails = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please login first to save search details.');
+        setLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      const response = await api.post('/search-queries', {
+        location: filters.location,
+        vehicleType: filters.vehicleType,
+        date: filters.date,
+        startTime: filters.startTime,
+        endTime: filters.endTime,
+        carModel: filters.carModel,
+        driverName: filters.driverName,
+        licenseNumber: filters.licenseNumber,
+      });
+
+      setSuccess('Search details saved successfully!');
+      
+      // Navigate to homepage after successful submission
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    } catch (err) {
+      console.error('Submit error:', err);
+      
+      // Don't redirect to login if it's a 401 - let the user see the error
+      if (err.response?.status === 401) {
+        setError('Session expired. Please login again.');
+        // Clear invalid token
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Navigate to login after showing error
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(err.response?.data?.message || 'Failed to save search details. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSelectSpot = (spot) => {
     setSelectedSpot(spot);
     setBookingData({
@@ -377,6 +431,15 @@ const BookSpot = () => {
                   className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
                   {loading ? 'Searching...' : 'Search Spots'}
+                </button>
+
+                <button
+                  onClick={submitSearchDetails}
+                  disabled={loading}
+                  type="button"
+                  className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold mt-3"
+                >
+                  {loading ? 'Submitting...' : 'Submit'}
                 </button>
               </div>
             </div>

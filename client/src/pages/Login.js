@@ -27,24 +27,39 @@ const Login = () => {
     setSuccess(false);
 
     try {
-      const response = await api.post('/auth/login', formData);
+      // Normalize email to lowercase and trim
+      const loginData = {
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password
+      };
+      
+      const response = await api.post('/auth/login', loginData);
       
       // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      // Store user data (excluding token and message)
-      const { token, message, ...userData } = response.data;
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       
-      // Dispatch custom event to notify App of login (for same-window updates)
-      window.dispatchEvent(new Event('localStorageChange'));
+      // Store user data
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      } else {
+        // Fallback: if user data is at root level
+        const { token, message, ...userData } = response.data;
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
       
       // Show success message
       setSuccess(true);
       setError('');
       
+      // Dispatch custom event to notify App of login (for same-window updates)
+      window.dispatchEvent(new Event('localStorageChange'));
+      
       // Redirect to home after showing success message
       setTimeout(() => {
-        navigate('/');
+        // Force navigation to homepage
+        window.location.href = '/';
       }, 1500); // 1.5 second delay to show success message
     } catch (error) {
       console.error('Login error:', error);

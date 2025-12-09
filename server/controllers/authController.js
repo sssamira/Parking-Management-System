@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -138,34 +139,109 @@ export const login = async (req, res) => {
     }
 
     console.log('🔐 Login attempt for email:', email);
+    console.log('🔐 Password received (length):', password ? password.length : 0);
+
+    // Normalize email to lowercase and trim password
+    const normalizedEmail = email.toLowerCase().trim();
+    const trimmedPassword = password.trim();
 
     // Check if user exists and get password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
     if (!user) {
-      console.log('❌ User not found:', email);
+      console.log('❌ User not found:', normalizedEmail);
+      console.log('🔍 Searching for users with similar emails...');
+      // Debug: Check if there are any users at all
+      const allUsers = await User.find({}).select('email');
+      console.log('🔍 All users in database:', allUsers.map(u => u.email));
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    console.log('✅ User found:', user.email);
+    console.log('🔍 User ID:', user._id);
+    
+    // Check if password field exists
+    if (!user.password) {
+      console.log('❌ Password field is missing or null');
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    
+    console.log('🔍 Password hash exists:', user.password ? 'Yes' : 'No');
+    console.log('🔍 Password hash length:', user.password ? user.password.length : 0);
+    console.log('🔍 Password hash starts with:', user.password ? user.password.substring(0, 10) : 'N/A');
+    
+    // Check if password is hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
+    const isPasswordHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$'));
+    console.log('🔍 Password is hashed:', isPasswordHashed);
+    
+    console.log('🔍 Checking password...');
+    console.log('🔍 Entered password length:', trimmedPassword.length);
+
     // Check password
-    const isPasswordMatch = await user.matchPassword(password);
+    let isPasswordMatch = false;
+    
+    if (isPasswordHashed) {
+      // Password is hashed, use bcrypt comparison
+      try {
+        // First try the model method with trimmed password
+        isPasswordMatch = await user.matchPassword(trimmedPassword);
+        console.log('🔍 Password match result (model method):', isPasswordMatch);
+        
+        // If that fails, try direct bcrypt comparison
+        if (!isPasswordMatch) {
+          console.log('🔍 Trying direct bcrypt comparison...');
+          isPasswordMatch = await bcrypt.compare(trimmedPassword, user.password);
+          console.log('🔍 Password match result (direct bcrypt):', isPasswordMatch);
+        }
+      } catch (compareError) {
+        console.error('❌ Password comparison error:', compareError);
+        console.error('❌ Error stack:', compareError.stack);
+        // Try direct bcrypt as fallback
+        try {
+          isPasswordMatch = await bcrypt.compare(trimmedPassword, user.password);
+          console.log('🔍 Fallback bcrypt comparison result:', isPasswordMatch);
+        } catch (fallbackError) {
+          console.error('❌ Fallback comparison also failed:', fallbackError);
+          return res.status(500).json({ message: 'Error during password verification' });
+        }
+      }
+    } else {
+      // Password is NOT hashed (stored as plain text) - this is a security issue but we'll handle it
+      console.log('⚠️ WARNING: Password is stored as plain text! This is a security issue.');
+      console.log('⚠️ Comparing plain text passwords...');
+      isPasswordMatch = trimmedPassword === user.password;
+      console.log('🔍 Plain text password match:', isPasswordMatch);
+      
+      // If password matches, hash it for future use
+      if (isPasswordMatch) {
+        console.log('🔒 Hashing password for future use...');
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(trimmedPassword, salt);
+        await user.save();
+        console.log('✅ Password has been hashed and saved');
+      }
+    }
     
     if (isPasswordMatch) {
-      console.log('✅ Login successful for:', email);
+      console.log('✅ Login successful for:', user.email);
+      const token = generateToken(user._id);
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        driverLicense: user.driverLicense,
-        address: user.address,
-        vehicles: user.vehicles,
-        role: user.role,
-        token: generateToken(user._id),
+        token,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          driverLicense: user.driverLicense,
+          address: user.address,
+          vehicles: user.vehicles,
+          role: user.role,
+        },
         message: 'Login successful',
       });
     } else {
-      console.log('❌ Invalid password for:', email);
+      console.log('❌ Invalid password for:', user.email);
+      console.log('🔍 Password provided length:', password.length);
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {

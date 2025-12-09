@@ -4,7 +4,7 @@ const bookingSchema = new mongoose.Schema({
   parkingSpot: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'ParkingSpot', 
-    required: true 
+    required: false 
   },
   user: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -17,16 +17,16 @@ const bookingSchema = new mongoose.Schema({
   },
   startTime: { 
     type: Date, 
-    required: true 
+    required: false 
   },
   endTime: { 
     type: Date, 
-    required: true 
+    required: false 
   },
   status: { 
     type: String, 
-    enum: ['booked','completed','cancelled'], 
-    default: 'booked' 
+    enum: ['booked','completed','cancelled', 'search_query'], 
+    default: 'search_query' 
   },
   discountApplied: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -35,7 +35,33 @@ const bookingSchema = new mongoose.Schema({
   },
   price: { 
     type: Number, 
-    required: true 
+    required: false,
+    default: 0
+  },
+  // Search query details
+  location: {
+    type: String,
+    trim: true
+  },
+  vehicleType: {
+    type: String,
+    enum: ['Car', 'Bike', 'All', ''],
+    default: ''
+  },
+  date: {
+    type: Date
+  },
+  carModel: {
+    type: String,
+    trim: true
+  },
+  driverName: {
+    type: String,
+    trim: true
+  },
+  licenseNumber: {
+    type: String,
+    trim: true
   }
 }, { timestamps: true });
 

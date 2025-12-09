@@ -54,8 +54,11 @@ export const createBooking = async (req, res) => {
     }
 
     const { parkingSpotId, startTime, endTime, vehicle, priceOverride } = req.body;
-    if (!parkingSpotId || !startTime || !endTime) {
-      return res.status(400).json({ message: 'parkingSpotId, startTime, and endTime are required' });
+    if (!parkingSpotId) {
+      return res.status(400).json({ message: 'parkingSpotId is required' });
+    }
+    if (!startTime || !endTime) {
+      return res.status(400).json({ message: 'startTime and endTime are required' });
     }
 
     const start = new Date(startTime);

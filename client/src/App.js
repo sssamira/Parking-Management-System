@@ -75,17 +75,17 @@ function App() {
                         Parking Management System
                       </h1>
                       <p className="text-gray-600 mb-6">Welcome to the Parking Management System</p>
-                      <p className="text-gray-600 mb-4">Please register or login to continue.</p>
-                      <div className="space-x-4">
+                      <p className="text-gray-600 mb-6">Please choose an option to continue.</p>
+                      <div className="space-y-4">
                         <Link
                           to="/register"
-                          className="inline-block px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                          className="block w-full px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-semibold text-lg"
                         >
-                          Register
+                          Registration
                         </Link>
                         <Link
                           to="/login"
-                          className="inline-block px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                          className="block w-full px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold text-lg"
                         >
                           Login
                         </Link>

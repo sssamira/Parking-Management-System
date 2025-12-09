@@ -170,9 +170,13 @@ const Register = () => {
       setSuccess(true);
       setErrors({});
       
+      // Dispatch custom event to notify App of registration (for same-window updates)
+      window.dispatchEvent(new Event('localStorageChange'));
+      
       // Redirect to home or dashboard after showing success message
       setTimeout(() => {
-        navigate('/');
+        // Force navigation to homepage
+        window.location.href = '/';
       }, 2000); // 2 second delay to show success message
     } catch (error) {
       console.error('Registration error:', error);
