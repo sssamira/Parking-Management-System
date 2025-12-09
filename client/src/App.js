@@ -1,13 +1,46 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import Homepage from './pages/Homepage';
 import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
 import MyFeedback from './pages/MyFeedback';
 
 function App() {
-  const user = localStorage.getItem('user');
+  const [user, setUser] = useState(() => {
+    try {
+      return localStorage.getItem('user');
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Update user state when localStorage changes
+  useEffect(() => {
+    const checkUser = () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        setUser(storedUser);
+      } catch (e) {
+        console.error('Error reading from localStorage:', e);
+        setUser(null);
+      }
+    };
+
+    // Check immediately
+    checkUser();
+    
+    // Listen for storage changes (for cross-tab/window updates)
+    window.addEventListener('storage', checkUser);
+    // Listen for custom event (for same-window updates)
+    window.addEventListener('localStorageChange', checkUser);
+    
+    return () => {
+      window.removeEventListener('storage', checkUser);
+      window.removeEventListener('localStorageChange', checkUser);
+    };
+  }, []);
 
   return (
     <Router>
@@ -32,32 +65,10 @@ function App() {
             <Route 
               path="/" 
               element={
-                <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
-                  {user ? (
-                    <div className="max-w-md mx-auto bg-white bg-opacity-95 backdrop-blur-sm p-6 rounded-lg shadow-xl text-center">
-                      <h2 className="text-2xl font-semibold mb-4 text-gray-800">Welcome back!</h2>
-                      <p className="text-gray-600 mb-6">You are logged in.</p>
-                      <div className="space-x-4">
-                        <Link
-                          to="/vehicles"
-                          className="inline-block px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                        >
-                          Manage Vehicles
-                        </Link>
-                        <button
-                          onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            window.location.reload();
-                          }}
-                          className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-                        >
-                          
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+                user ? (
+                  <Homepage />
+                ) : (
+                  <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
                     <div className="max-w-md mx-auto bg-white bg-opacity-95 backdrop-blur-sm p-6 rounded-lg shadow-xl text-center">
                       <h1 className="text-4xl font-bold text-gray-800 mb-4">
                         Parking Management System
@@ -79,8 +90,8 @@ function App() {
                         </Link>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )
               } 
             />
             <Route path="/register" element={<Register />} />
@@ -96,4 +107,3 @@ function App() {
 }
 
 export default App;
-

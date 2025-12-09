@@ -31,7 +31,12 @@ const Login = () => {
       
       // Store token and user data
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Store user data (excluding token and message)
+      const { token, message, ...userData } = response.data;
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Dispatch custom event to notify App of login (for same-window updates)
+      window.dispatchEvent(new Event('localStorageChange'));
       
       // Show success message
       setSuccess(true);
