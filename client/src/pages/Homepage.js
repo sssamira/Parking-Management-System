@@ -53,7 +53,7 @@ const Homepage = () => {
 
       {/* Cards */}
       <div className="max-w-6xl mx-auto px-4 lg:px-0 mt-12 pb-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
             to="/vehicles"
             className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(63,81,181,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(63,81,181,0.45)] transition"
@@ -64,6 +64,19 @@ const Homepage = () => {
             <h3 className="text-xl font-semibold text-indigo-900 mb-2">Manage Vehicles</h3>
             <p className="text-gray-600 leading-relaxed">
               View, add, and manage all vehicles in the parking system. Track parking spots and vehicle details.
+            </p>
+          </Link>
+
+          <Link
+            to="/book-spot"
+            className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(99,102,241,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(99,102,241,0.45)] transition"
+          >
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-purple-100 text-purple-600 text-3xl mb-4">
+              📅
+            </div>
+            <h3 className="text-xl font-semibold text-indigo-900 mb-2">Spot Pre-Booking</h3>
+            <p className="text-gray-600 leading-relaxed">
+              Reserve a specific parking spot for a future time and date. Get instant confirmation via email.
             </p>
           </Link>
 

@@ -6,6 +6,7 @@ import Homepage from './pages/Homepage';
 import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
 import MyFeedback from './pages/MyFeedback';
+import BookSpot from './pages/BookSpot';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -97,6 +98,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/vehicles" element={<Vehicles />} />
+            <Route path="/book-spot" element={<BookSpot />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/my-feedback" element={<MyFeedback />} />
           </Routes>
