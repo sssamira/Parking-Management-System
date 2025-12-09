@@ -13,11 +13,14 @@ const BookSpot = () => {
   
   // Search filters
   const [filters, setFilters] = useState({
-    parkinglotName: '',
     location: '',
     vehicleType: '',
+    date: '',
     startTime: '',
     endTime: '',
+    carModel: '',
+    driverName: '',
+    licenseNumber: '',
   });
 
   // Booking form
@@ -87,7 +90,6 @@ const BookSpot = () => {
 
     try {
       const params = new URLSearchParams();
-      if (filters.parkinglotName) params.append('parkinglotName', filters.parkinglotName);
       if (filters.location) params.append('location', filters.location);
       if (filters.vehicleType) params.append('vehicleType', filters.vehicleType);
       if (filters.startTime) params.append('startTime', new Date(filters.startTime).toISOString());
@@ -217,30 +219,58 @@ const BookSpot = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parking Lot Name
-                  </label>
-                  <input
-                    type="text"
-                    name="parkinglotName"
-                    value={filters.parkinglotName}
-                    onChange={handleFilterChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="e.g., Main Parking"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Location
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="location"
                     value={filters.location}
                     onChange={handleFilterChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="e.g., Downtown"
-                  />
+                  >
+                    <option value="">All Locations</option>
+                    <optgroup label="Shopping Malls">
+                      <option value="Bashundhara City">Bashundhara City</option>
+                      <option value="Jamuna Future Park">Jamuna Future Park</option>
+                      <option value="Shimanto Shambhar">Shimanto Shambhar</option>
+                      <option value="Eastern Plaza">Eastern Plaza</option>
+                      <option value="New Market">New Market</option>
+                      <option value="City Centre">City Centre</option>
+                      <option value="Aarong">Aarong</option>
+                      <option value="Gulshan 1 Shopping Complex">Gulshan 1 Shopping Complex</option>
+                      <option value="Gulshan 2 Shopping Complex">Gulshan 2 Shopping Complex</option>
+                    </optgroup>
+                    <optgroup label="Hospitals">
+                      <option value="Apollo Hospital">Apollo Hospital</option>
+                      <option value="Square Hospital">Square Hospital</option>
+                      <option value="United Hospital">United Hospital</option>
+                      <option value="Ibn Sina Hospital">Ibn Sina Hospital</option>
+                      <option value="Labaid Hospital">Labaid Hospital</option>
+                      <option value="Popular Hospital">Popular Hospital</option>
+                      <option value="Dhaka Medical College Hospital">Dhaka Medical College Hospital</option>
+                      <option value="Bangabandhu Sheikh Mujib Medical University">Bangabandhu Sheikh Mujib Medical University</option>
+                    </optgroup>
+                    <optgroup label="Educational Institutions">
+                      <option value="University of Dhaka">University of Dhaka</option>
+                      <option value="North South University">North South University</option>
+                      <option value="BRAC University">BRAC University</option>
+                      <option value="Independent University Bangladesh">Independent University Bangladesh</option>
+                      <option value="American International University">American International University</option>
+                      <option value="East West University">East West University</option>
+                      <option value="Daffodil International University">Daffodil International University</option>
+                    </optgroup>
+                    <optgroup label="Airports & Transport">
+                      <option value="Hazrat Shahjalal International Airport">Hazrat Shahjalal International Airport</option>
+                      <option value="Kamalapur Railway Station">Kamalapur Railway Station</option>
+                      <option value="Gabtoli Bus Terminal">Gabtoli Bus Terminal</option>
+                      <option value="Sayedabad Bus Terminal">Sayedabad Bus Terminal</option>
+                    </optgroup>
+                    <optgroup label="Entertainment & Recreation">
+                      <option value="National Museum">National Museum</option>
+                      <option value="Bangladesh National Zoo">Bangladesh National Zoo</option>
+                      <option value="Hatirjheel">Hatirjheel</option>
+                      <option value="Gulshan Lake Park">Gulshan Lake Park</option>
+                    </optgroup>
+                  </select>
                 </div>
 
                 <div>
@@ -258,6 +288,61 @@ const BookSpot = () => {
                     <option value="Bike">Bike</option>
                     <option value="All">All</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Car Model
+                  </label>
+                  <input
+                    type="text"
+                    name="carModel"
+                    value={filters.carModel}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g., Toyota Corolla"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Driver Name
+                  </label>
+                  <input
+                    type="text"
+                    name="driverName"
+                    value={filters.driverName}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter driver name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    License Number
+                  </label>
+                  <input
+                    type="text"
+                    name="licenseNumber"
+                    value={filters.licenseNumber}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter license number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={filters.date}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
                 </div>
 
                 <div>
@@ -420,7 +505,7 @@ const BookSpot = () => {
               /* Spots List */
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold text-indigo-900 mb-4">
-                  Available Spots {spots.length > 0 && `(${spots.length})`}
+                  Available Spots
                 </h2>
                 
                 {spots.length === 0 ? (
