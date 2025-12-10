@@ -169,3 +169,31 @@ export const createBooking = async (req, res) => {
   }
 };
 
+// @desc    Get user's bookings
+// @route   GET /api/bookings
+// @access  Private
+export const getUserBookings = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const bookings = await Booking.find({ user: userId })
+      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    return res.status(200).json({
+      bookings,
+      count: bookings.length,
+    });
+  } catch (err) {
+    console.error('Get bookings error:', err);
+    return res.status(500).json({ 
+      message: 'Server error while fetching bookings',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+

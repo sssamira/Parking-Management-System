@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api';
 
 const Homepage = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRef = useRef(null);
+
   let user = {};
   try {
     const userStr = localStorage.getItem('user');
@@ -13,10 +19,120 @@ const Homepage = () => {
     user = {};
   }
 
+  // Fetch notifications
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Fetch user bookings for booking-related notifications
+      const bookingsResponse = await api.get('/bookings');
+      const bookings = bookingsResponse.data?.bookings || [];
+
+      // Create notifications from bookings
+      const bookingNotifications = bookings
+        .filter(booking => booking.status === 'booked')
+        .map(booking => {
+          const spotName = booking.parkingSpot?.parkinglotName || 'Parking Spot';
+          const spotNum = booking.parkingSpot?.spotNum || '';
+          const location = booking.parkingSpot?.location || 'location';
+          const startTime = booking.startTime ? new Date(booking.startTime) : null;
+          
+          return {
+            id: `booking-${booking._id}`,
+            type: 'booking',
+            title: 'Booking Confirmed',
+            message: `Your parking spot ${spotName}${spotNum ? ` - ${spotNum}` : ''} at ${location} is confirmed.${startTime ? ` Starts: ${startTime.toLocaleString()}` : ''}`,
+            time: new Date(booking.createdAt),
+            read: false,
+            link: '/book-spot'
+          };
+        });
+
+      // Add upcoming booking reminders (bookings starting within 24 hours)
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const upcomingBookings = bookings
+        .filter(booking => {
+          if (!booking.startTime || booking.status !== 'booked') return false;
+          const start = new Date(booking.startTime);
+          return start > now && start <= tomorrow;
+        })
+        .map(booking => {
+          const spotName = booking.parkingSpot?.parkinglotName || 'Parking Spot';
+          const location = booking.parkingSpot?.location || 'location';
+          const startTime = new Date(booking.startTime);
+          
+          return {
+            id: `reminder-${booking._id}`,
+            type: 'reminder',
+            title: 'Upcoming Booking',
+            message: `Your booking at ${location} (${spotName}) starts in less than 24 hours.`,
+            time: startTime,
+            read: false,
+            link: '/book-spot'
+          };
+        });
+
+      // Combine all notifications
+      const allNotifications = [...bookingNotifications, ...upcomingBookings];
+      
+      // Sort by time (newest first)
+      allNotifications.sort((a, b) => new Date(b.time) - new Date(a.time));
+      
+      setNotifications(allNotifications);
+      setUnreadCount(allNotifications.filter(n => !n.read).length);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      // Set empty notifications on error
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.reload();
+  };
+
+  const markAsRead = (notificationId) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+    setUnreadCount(0);
+  };
+
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
   };
 
   return (
@@ -32,13 +148,101 @@ const Homepage = () => {
             <p className="text-xs text-gray-500">Your centralized operations hub</p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
-        >
-          <span>↪</span>
-          <span>Logout</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          {/* Notification Button */}
+          <div className="relative" ref={notificationRef}>
+            <button
+              onClick={toggleNotifications}
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
+            >
+              <span className="text-xl">🔔</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-indigo-50">
+                  <h3 className="font-semibold text-indigo-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+                
+                <div className="overflow-y-auto max-h-80">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <p className="text-lg mb-2">🔕</p>
+                      <p>No notifications</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-4 hover:bg-gray-50 transition cursor-pointer ${
+                            !notification.read ? 'bg-blue-50' : ''
+                          }`}
+                          onClick={() => {
+                            markAsRead(notification.id);
+                            if (notification.link) {
+                              window.location.href = notification.link;
+                            }
+                          }}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                              !notification.read ? 'bg-indigo-600' : 'bg-gray-300'
+                            }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900">
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notification.time).toLocaleString()}
+                              </p>
+                            </div>
+                            {notification.type === 'booking' && (
+                              <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                Booking
+                              </span>
+                            )}
+                            {notification.type === 'reminder' && (
+                              <span className="flex-shrink-0 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                                Reminder
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
+          >
+            <span>↪</span>
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       {/* Hero */}

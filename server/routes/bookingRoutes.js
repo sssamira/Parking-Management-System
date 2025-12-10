@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { createBooking } from '../controllers/bookingController.js';
+import { createBooking, getUserBookings } from '../controllers/bookingController.js';
 import { protect } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 
@@ -17,6 +17,7 @@ const bookingValidation = [
 ];
 
 router.post('/', protect, bookingValidation, createBooking);
+router.get('/', protect, getUserBookings);
 
 export default router;
 
