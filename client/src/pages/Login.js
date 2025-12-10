@@ -80,7 +80,10 @@ const Login = () => {
       
       let errorMessage = 'Login failed. Please try again.';
       
-      if (error.response?.data?.message) {
+      if (error.response?.status === 503) {
+        // Database connection error
+        errorMessage = 'Database connection not available. The server is trying to connect. Please wait a moment and try again.';
+      } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.code === 'ECONNREFUSED') {
         errorMessage = 'Cannot connect to server. Please make sure the backend server is running on port 3001.';

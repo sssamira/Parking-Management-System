@@ -136,12 +136,20 @@ const BookSpot = () => {
         licenseNumber: filters.licenseNumber,
       });
 
-      setSuccess('Search details saved successfully!');
+      setSuccess('✅ Your search details have been successfully submitted and saved to the database! The admin will review your requirements.');
       
-      // Navigate to homepage after successful submission
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
+      // Optionally reset form after successful submission
+      // Uncomment the following lines if you want to clear the form after submission
+      // setFilters({
+      //   location: '',
+      //   vehicleType: '',
+      //   date: '',
+      //   startTime: '',
+      //   endTime: '',
+      //   carModel: '',
+      //   driverName: '',
+      //   licenseNumber: '',
+      // });
     } catch (err) {
       console.error('Submit error:', err);
       
@@ -265,12 +273,13 @@ const BookSpot = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Search Filters */}
+          {/* Search Filters Form */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-indigo-900 mb-4">Search Filters</h2>
+              <h2 className="text-xl font-semibold text-indigo-900 mb-4">Search & Submit Form</h2>
+              <p className="text-sm text-gray-600 mb-4">Fill in the details below to search for spots or submit your requirements to the admin.</p>
               
-              <div className="space-y-4">
+              <form onSubmit={submitSearchDetails} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Location
@@ -425,23 +434,25 @@ const BookSpot = () => {
                   />
                 </div>
 
-                <button
-                  onClick={searchSpots}
-                  disabled={loading}
-                  className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                >
-                  {loading ? 'Searching...' : 'Search Spots'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={searchSpots}
+                    disabled={loading}
+                    className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    {loading ? 'Searching...' : 'Search Spots'}
+                  </button>
 
-                <button
-                  onClick={submitSearchDetails}
-                  disabled={loading}
-                  type="button"
-                  className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold mt-3"
-                >
-                  {loading ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    {loading ? 'Submitting...' : 'Submit to Admin'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 

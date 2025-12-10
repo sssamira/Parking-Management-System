@@ -60,11 +60,14 @@ export const register = async (req, res) => {
       carYear: parseInt(vehicle.carYear) || vehicle.carYear,
     }));
 
+    // Trim password to ensure consistency
+    const trimmedPassword = password.trim();
+    
     // Create user
     const user = await User.create({
       name,
       email,
-      password,
+      password: trimmedPassword, // Use trimmed password
       phone,
       driverLicense,
       address,
@@ -143,7 +146,9 @@ export const login = async (req, res) => {
 
     // Normalize email to lowercase and trim password
     const normalizedEmail = email.toLowerCase().trim();
-    const trimmedPassword = password.trim();
+    // Don't trim password here - we want to compare exactly what user entered
+    // But we'll handle trimming in the comparison logic
+    const enteredPassword = password; // Keep original, but we'll trim during comparison if needed
 
     // Check if user exists and get password
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
@@ -175,51 +180,59 @@ export const login = async (req, res) => {
     console.log('🔍 Password is hashed:', isPasswordHashed);
     
     console.log('🔍 Checking password...');
-    console.log('🔍 Entered password length:', trimmedPassword.length);
-
+    console.log('🔍 Entered password length:', enteredPassword.length);
+    
+    // Normalize password - trim whitespace (passwords shouldn't have leading/trailing spaces)
+    const normalizedPassword = enteredPassword.trim();
+    
     // Check password
     let isPasswordMatch = false;
     
-    if (isPasswordHashed) {
-      // Password is hashed, use bcrypt comparison
-      try {
-        // First try the model method with trimmed password
-        isPasswordMatch = await user.matchPassword(trimmedPassword);
-        console.log('🔍 Password match result (model method):', isPasswordMatch);
+    try {
+      if (isPasswordHashed) {
+        // Password is hashed, use bcrypt comparison
+        console.log('🔍 Using bcrypt comparison (password is hashed)');
         
-        // If that fails, try direct bcrypt comparison
+        // Try the model method first
+        isPasswordMatch = await user.matchPassword(normalizedPassword);
+        console.log('🔍 Password match (model method):', isPasswordMatch);
+        
+        // If model method fails, try direct bcrypt
         if (!isPasswordMatch) {
           console.log('🔍 Trying direct bcrypt comparison...');
-          isPasswordMatch = await bcrypt.compare(trimmedPassword, user.password);
-          console.log('🔍 Password match result (direct bcrypt):', isPasswordMatch);
+          isPasswordMatch = await bcrypt.compare(normalizedPassword, user.password);
+          console.log('🔍 Password match (direct bcrypt):', isPasswordMatch);
         }
-      } catch (compareError) {
-        console.error('❌ Password comparison error:', compareError);
-        console.error('❌ Error stack:', compareError.stack);
-        // Try direct bcrypt as fallback
-        try {
-          isPasswordMatch = await bcrypt.compare(trimmedPassword, user.password);
-          console.log('🔍 Fallback bcrypt comparison result:', isPasswordMatch);
-        } catch (fallbackError) {
-          console.error('❌ Fallback comparison also failed:', fallbackError);
-          return res.status(500).json({ message: 'Error during password verification' });
+      } else {
+        // Password is NOT hashed (stored as plain text) - security issue but handle it
+        console.log('⚠️ WARNING: Password stored as plain text!');
+        isPasswordMatch = normalizedPassword === user.password.trim();
+        console.log('🔍 Plain text password match:', isPasswordMatch);
+        
+        // If matches, hash it for future use (async, non-blocking)
+        if (isPasswordMatch) {
+          setTimeout(async () => {
+            try {
+              const salt = await bcrypt.genSalt(10);
+              const hashedPassword = await bcrypt.hash(normalizedPassword, salt);
+              await User.updateOne({ _id: user._id }, { password: hashedPassword });
+              console.log('✅ Password has been hashed and saved');
+            } catch (hashError) {
+              console.error('⚠️ Error hashing password:', hashError.message);
+            }
+          }, 0);
         }
       }
-    } else {
-      // Password is NOT hashed (stored as plain text) - this is a security issue but we'll handle it
-      console.log('⚠️ WARNING: Password is stored as plain text! This is a security issue.');
-      console.log('⚠️ Comparing plain text passwords...');
-      isPasswordMatch = trimmedPassword === user.password;
-      console.log('🔍 Plain text password match:', isPasswordMatch);
-      
-      // If password matches, hash it for future use
-      if (isPasswordMatch) {
-        console.log('🔒 Hashing password for future use...');
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(trimmedPassword, salt);
-        await user.save();
-        console.log('✅ Password has been hashed and saved');
-      }
+    } catch (compareError) {
+      console.error('❌ Password comparison error:', compareError);
+      console.error('❌ Error details:', {
+        message: compareError.message,
+        stack: compareError.stack
+      });
+      return res.status(500).json({ 
+        message: 'Error during password verification',
+        error: process.env.NODE_ENV === 'development' ? compareError.message : undefined
+      });
     }
     
     if (isPasswordMatch) {
@@ -241,8 +254,15 @@ export const login = async (req, res) => {
       });
     } else {
       console.log('❌ Invalid password for:', user.email);
-      console.log('🔍 Password provided length:', password.length);
-      res.status(401).json({ message: 'Invalid email or password' });
+      console.log('🔍 Password provided length:', normalizedPassword.length);
+      console.log('🔍 Password hash in DB starts with:', user.password.substring(0, 20));
+      console.log('🔍 Password is hashed:', isPasswordHashed);
+      
+      // Provide more helpful error message
+      res.status(401).json({ 
+        message: 'Invalid email or password',
+        hint: 'Please check your email and password. Make sure there are no extra spaces.'
+      });
     }
   } catch (error) {
     console.error('❌ Login error:', error);
@@ -251,7 +271,19 @@ export const login = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ message: 'Server error during login' });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Server error during login';
+    if (error.name === 'ValidationError') {
+      errorMessage = 'Validation error: ' + error.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ 
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

@@ -21,3 +21,5 @@ router.post('/', protect, bookingValidation, createBooking);
 export default router;
 
 
+
+

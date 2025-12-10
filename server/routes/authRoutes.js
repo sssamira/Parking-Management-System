@@ -33,7 +33,7 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required'),
   handleValidationErrors,
 ];

@@ -56,6 +56,7 @@ export const getUserSearchQueries = async (req, res) => {
       user: userId,
       status: 'search_query'
     })
+      .populate('user', 'name email')
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -66,6 +67,30 @@ export const getUserSearchQueries = async (req, res) => {
   } catch (err) {
     console.error('Get search queries error:', err);
     return res.status(500).json({ message: 'Server error while fetching search queries' });
+  }
+};
+
+// @desc    Get all search queries (admin only)
+// @route   GET /api/search-queries/admin/all
+// @access  Private/Admin
+export const getAllSearchQueries = async (req, res) => {
+  try {
+    // Get all bookings with status 'search_query'
+    const searchQueries = await Booking.find({ 
+      status: 'search_query'
+    })
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(500);
+
+    return res.status(200).json({
+      searchQueries,
+      count: searchQueries.length,
+      message: 'All search queries retrieved successfully',
+    });
+  } catch (err) {
+    console.error('Get all search queries error:', err);
+    return res.status(500).json({ message: 'Server error while fetching all search queries' });
   }
 };
 
