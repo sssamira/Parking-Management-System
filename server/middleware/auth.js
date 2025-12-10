@@ -13,7 +13,19 @@ export const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from token (excluding password)
+      // Check if it's the hardcoded admin
+      if (decoded.id === 'admin_hardcoded' && decoded.role === 'admin') {
+        // Create virtual admin user
+        req.user = {
+          _id: 'admin_hardcoded',
+          name: 'System Administrator',
+          email: process.env.ADMIN_EMAIL?.toLowerCase().trim(),
+          role: 'admin',
+        };
+        return next();
+      }
+
+      // Normal user - get from database
       req.user = await User.findById(decoded.id).select('-password');
 
       if (!req.user) {

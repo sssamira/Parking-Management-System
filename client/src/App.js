@@ -7,6 +7,7 @@ import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
 import MyFeedback from './pages/MyFeedback';
 import BookSpot from './pages/BookSpot';
+import AdminSpots from './pages/AdminSpots';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -101,6 +102,7 @@ function App() {
             <Route path="/book-spot" element={<BookSpot />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/my-feedback" element={<MyFeedback />} />
+            <Route path="/admin/spots" element={<AdminSpots />} />
           </Routes>
         </div>
       </div>

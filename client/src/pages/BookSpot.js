@@ -10,6 +10,8 @@ const BookSpot = () => {
   const [success, setSuccess] = useState('');
   const [user, setUser] = useState(null);
   const [vehicles, setVehicles] = useState([]);
+  const [locationPrice, setLocationPrice] = useState(null); // Store price info for selected location
+  const [loadingPrice, setLoadingPrice] = useState(false); // Loading state for price fetch
   
   // Search filters
   const [filters, setFilters] = useState({
@@ -58,11 +60,87 @@ const BookSpot = () => {
     }
   }, []);
 
-  const handleFilterChange = (e) => {
+  const handleFilterChange = async (e) => {
+    const { name, value } = e.target;
     setFilters({
       ...filters,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    
+    // If location changed, fetch price for that location
+    if (name === 'location' && value) {
+      // Show loading state immediately
+      setLoadingPrice(true);
+      setLocationPrice({
+        location: value,
+        loading: true
+      });
+      
+      try {
+        const response = await api.get(`/parking?location=${encodeURIComponent(value)}`);
+        
+        // Check both availableSpots and spots in response
+        const spots = response.data?.availableSpots || response.data?.spots || [];
+        
+        if (spots.length > 0) {
+          // Calculate average price
+          const prices = spots.map(spot => spot.pricePerHour || 0).filter(p => p > 0);
+          
+          if (prices.length > 0) {
+            const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            
+            setLocationPrice({
+              location: value,
+              average: avgPrice.toFixed(2),
+              min: minPrice,
+              max: maxPrice,
+              hasRange: minPrice !== maxPrice,
+              loading: false
+            });
+          } else {
+            setLocationPrice({
+              location: value,
+              average: 'N/A',
+              min: 0,
+              max: 0,
+              hasRange: false,
+              noPrice: true,
+              loading: false
+            });
+          }
+        } else {
+          // Show message even if no spots found
+          setLocationPrice({
+            location: value,
+            average: 'N/A',
+            min: 0,
+            max: 0,
+            hasRange: false,
+            noSpots: true,
+            loading: false
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching location price:', err);
+        setLocationPrice({
+          location: value,
+          average: 'N/A',
+          min: 0,
+          max: 0,
+          hasRange: false,
+          error: true,
+          loading: false
+        });
+      } finally {
+        setLoadingPrice(false);
+      }
+    } else if (name === 'location' && !value) {
+      // Location cleared
+      setLocationPrice(null);
+      setLoadingPrice(false);
+    }
   };
 
   const handleBookingChange = (e) => {
@@ -214,6 +292,22 @@ const BookSpot = () => {
     }
 
     try {
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please login first to book a spot');
+        setLoading(false);
+        setTimeout(() => navigate('/login'), 2000);
+        return;
+      }
+
+      console.log('📝 Submitting booking:', {
+        parkingSpotId: bookingData.parkingSpotId,
+        startTime: bookingData.startTime,
+        endTime: bookingData.endTime,
+        vehicle: bookingData.vehicle
+      });
+
       const response = await api.post('/bookings', {
         parkingSpotId: bookingData.parkingSpotId,
         startTime: new Date(bookingData.startTime).toISOString(),
@@ -221,25 +315,44 @@ const BookSpot = () => {
         vehicle: bookingData.vehicle,
       });
 
-      setSuccess(`Booking confirmed! Your booking ID is ${response.data.booking._id}. A confirmation email has been sent to ${user?.email || 'your email'}.`);
-      setSelectedSpot(null);
-      setBookingData({
-        parkingSpotId: '',
-        startTime: '',
-        endTime: '',
-        vehicle: {
-          licensePlate: vehicles.length > 0 ? vehicles[0].licensePlate : '',
-          carType: vehicles.length > 0 ? vehicles[0].carType : ''
-        }
-      });
-      
-      // Refresh spots to show updated availability
-      setTimeout(() => {
-        searchSpots();
-      }, 2000);
+      console.log('✅ Booking response:', response.data);
+
+      if (response.data && response.data.booking) {
+        setSuccess(`✅ Booking confirmed! Your booking ID is ${response.data.booking._id}. A confirmation email has been sent to ${user?.email || 'your email'}.`);
+        setSelectedSpot(null);
+        setBookingData({
+          parkingSpotId: '',
+          startTime: '',
+          endTime: '',
+          vehicle: {
+            licensePlate: vehicles.length > 0 ? vehicles[0].licensePlate : '',
+            carType: vehicles.length > 0 ? vehicles[0].carType : ''
+          }
+        });
+        
+        // Refresh spots to show updated availability
+        setTimeout(() => {
+          searchSpots();
+        }, 2000);
+      } else {
+        setError('Booking created but no confirmation received. Please check your bookings.');
+      }
     } catch (err) {
-      console.error('Booking error:', err);
-      setError(err.response?.data?.message || 'Failed to book spot. Please try again.');
+      console.error('❌ Booking error:', err);
+      console.error('❌ Error response:', err.response?.data);
+      console.error('❌ Error status:', err.response?.status);
+      
+      if (err.response?.status === 401) {
+        setError('Please login to book a spot');
+        setTimeout(() => navigate('/login'), 2000);
+      } else if (err.response?.status === 409) {
+        setError('❌ This spot is not available for the selected time. It is already booked. Please select a different spot or time.');
+        setSelectedSpot(null);
+      } else if (err.response?.status === 400) {
+        setError(err.response?.data?.message || 'Invalid booking data. Please check your inputs.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to book spot. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -334,6 +447,34 @@ const BookSpot = () => {
                       <option value="Gulshan Lake Park">Gulshan Lake Park</option>
                     </optgroup>
                   </select>
+                  {/* Display hourly payment info when location is selected */}
+                  {locationPrice && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      {locationPrice.loading ? (
+                        <p className="text-sm text-blue-800 font-medium">
+                          ⏳ Loading price for <span className="font-semibold">{locationPrice.location}</span>...
+                        </p>
+                      ) : locationPrice.noSpots ? (
+                        <p className="text-sm text-blue-800 font-medium">
+                          ℹ️ No parking spots found for <span className="font-semibold">{locationPrice.location}</span>. Please contact admin to add spots.
+                        </p>
+                      ) : locationPrice.error ? (
+                        <p className="text-sm text-blue-800 font-medium">
+                          ⚠️ Unable to fetch price for <span className="font-semibold">{locationPrice.location}</span>. Please try again.
+                        </p>
+                      ) : locationPrice.noPrice ? (
+                        <p className="text-sm text-blue-800 font-medium">
+                          ℹ️ Price information not available for <span className="font-semibold">{locationPrice.location}</span> parking.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-blue-800 font-medium">
+                          💰 Hourly payment is ৳{locationPrice.hasRange 
+                            ? `${locationPrice.min} - ৳${locationPrice.max}` 
+                            : locationPrice.average} for <span className="font-semibold">{locationPrice.location}</span> parking
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -458,7 +599,7 @@ const BookSpot = () => {
                     {selectedSpot.spotNum} - {selectedSpot.parkinglotName} (Floor {selectedSpot.floor})
                   </p>
                   <p className="text-sm text-gray-600">Location: {selectedSpot.location}</p>
-                  <p className="text-sm text-gray-600">Price: ${selectedSpot.pricePerHour}/hour</p>
+                  <p className="text-sm text-gray-600">Price: ৳{selectedSpot.pricePerHour}/hour</p>
                 </div>
 
                 <form onSubmit={handleBookSpot} className="space-y-4">
@@ -591,7 +732,7 @@ const BookSpot = () => {
                               Floor {spot.floor} • {spot.location}
                             </p>
                             <p className="text-sm text-gray-600">
-                              Vehicle Type: {spot.vehicleType} • ${spot.pricePerHour}/hour
+                              Vehicle Type: {spot.vehicleType} • ৳{spot.pricePerHour}/hour
                             </p>
                             {spot.tags && spot.tags.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-2">

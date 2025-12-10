@@ -147,17 +147,53 @@ export const login = async (req, res) => {
     console.log('🔐 Login attempt for email:', email);
     console.log('🔐 Password received (length):', password ? password.length : 0);
 
-    // Normalize email - validation middleware should have already normalized it, but do it again to be safe
     const normalizedEmail = email.toLowerCase().trim();
-    
-    // Basic email format check (in case validation middleware didn't catch it)
+    const normalizedPassword = password.trim();
+
+    // CHECK FOR HARDCODED ADMIN FIRST
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (adminEmail && adminPassword && 
+        normalizedEmail === adminEmail && 
+        normalizedPassword === adminPassword) {
+      
+      console.log('✅ Admin login successful');
+      
+      // Create virtual admin user object
+      const adminUser = {
+        _id: 'admin_hardcoded',
+        name: 'System Administrator',
+        email: adminEmail,
+        phone: 'N/A',
+        driverLicense: 'N/A',
+        address: 'N/A',
+        vehicles: [],
+        role: 'admin',
+      };
+
+      // Generate token with admin role
+      const token = jwt.sign(
+        { id: 'admin_hardcoded', role: 'admin' },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      );
+
+      return res.json({
+        token,
+        user: adminUser,
+        message: 'Admin login successful',
+      });
+    }
+
+    // If not admin, proceed with normal user login
+    // Basic email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ message: 'Please provide a valid email address' });
     }
-    // Don't trim password here - we want to compare exactly what user entered
-    // But we'll handle trimming in the comparison logic
-    const enteredPassword = password; // Keep original, but we'll trim during comparison if needed
+
+    const enteredPassword = password;
 
     // Check if user exists and get password
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
@@ -191,9 +227,7 @@ export const login = async (req, res) => {
     console.log('🔍 Checking password...');
     console.log('🔍 Entered password length:', enteredPassword.length);
     
-    // Normalize password - trim whitespace (passwords shouldn't have leading/trailing spaces)
-    const normalizedPassword = enteredPassword.trim();
-    
+    // Use normalizedPassword that was already declared above
     // Check password
     let isPasswordMatch = false;
     

@@ -6,23 +6,36 @@ import nodemailer from 'nodemailer';
 const transporter = (() => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
-    console.warn('📭 SMTP not fully configured. Booking emails will be skipped.');
+    // Only log once on startup, not as a warning
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ℹ️  SMTP not configured. Booking confirmation emails will be skipped. To enable emails, configure SMTP settings in .env file.');
+    }
     return null;
   }
 
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: SMTP_SECURE === 'true',
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
+  try {
+    const transport = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: SMTP_SECURE === 'true',
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+    console.log('✅ SMTP configured successfully. Booking emails will be sent.');
+    return transport;
+  } catch (error) {
+    console.error('❌ Failed to create SMTP transporter:', error.message);
+    return null;
+  }
 })();
 
 const sendBookingEmail = async ({ to, subject, html }) => {
-  if (!transporter) return;
+  if (!transporter) {
+    // Silently skip if SMTP not configured
+    return;
+  }
   try {
     await transporter.sendMail({
       from: process.env.MAIL_FROM || `"Parking Management" <no-reply@parking.example>`,
@@ -30,8 +43,10 @@ const sendBookingEmail = async ({ to, subject, html }) => {
       subject,
       html,
     });
+    console.log(`✅ Booking confirmation email sent to ${to}`);
   } catch (err) {
     console.error('❌ Failed to send booking email:', err.message);
+    // Don't throw - email failure shouldn't break booking
   }
 };
 
@@ -48,12 +63,18 @@ const hasOverlap = async ({ spotId, startTime, endTime }) => {
 
 export const createBooking = async (req, res) => {
   try {
+    console.log('📝 Creating booking request received');
+    console.log('📝 Request body:', req.body);
+    console.log('📝 User:', req.user?._id);
+    
     const userId = req.user?._id;
     if (!userId) {
+      console.error('❌ No user ID found in request');
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { parkingSpotId, startTime, endTime, vehicle, priceOverride } = req.body;
+    console.log('📝 Booking data:', { parkingSpotId, startTime, endTime, vehicle });
     if (!parkingSpotId) {
       return res.status(400).json({ message: 'parkingSpotId is required' });
     }
@@ -86,6 +107,7 @@ export const createBooking = async (req, res) => {
       ? Number(priceOverride)
       : Number((durationHours * spot.pricePerHour).toFixed(2));
 
+    console.log('📝 Creating booking in database...');
     const booking = await Booking.create({
       parkingSpot: spot._id,
       user: userId,
@@ -95,7 +117,18 @@ export const createBooking = async (req, res) => {
       },
       startTime: start,
       endTime: end,
+      status: 'booked', // Explicitly set status to 'booked'
       price,
+    });
+
+    console.log('✅ Booking created successfully in database:', {
+      bookingId: booking._id,
+      spot: spot.parkinglotName,
+      user: userId,
+      status: booking.status,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      price: booking.price
     });
 
     // Fire-and-forget email
@@ -122,8 +155,17 @@ export const createBooking = async (req, res) => {
       booking,
     });
   } catch (err) {
-    console.error('Create booking error:', err);
-    return res.status(500).json({ message: 'Server error while creating booking' });
+    console.error('❌ Create booking error:', err);
+    console.error('❌ Error details:', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    return res.status(500).json({ 
+      message: 'Server error while creating booking',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
