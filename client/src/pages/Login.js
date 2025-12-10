@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
 const Login = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,10 +26,28 @@ const Login = () => {
     setSuccess(false);
 
     try {
+      // Validate email format before sending
+      const email = formData.email.trim();
+      const password = formData.password;
+      
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError('Please enter a valid email address');
+        setLoading(false);
+        return;
+      }
+      
+      if (!password || password.trim() === '') {
+        setError('Password is required');
+        setLoading(false);
+        return;
+      }
+      
       // Normalize email to lowercase and trim
       const loginData = {
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password
+        email: email.toLowerCase().trim(),
+        password: password
       };
       
       const response = await api.post('/auth/login', loginData);
@@ -80,7 +97,15 @@ const Login = () => {
       
       let errorMessage = 'Login failed. Please try again.';
       
-      if (error.response?.status === 503) {
+      if (error.response?.status === 400) {
+        // Validation error
+        const validationMessage = error.response.data?.message || error.response.data?.errors?.[0]?.message;
+        if (validationMessage) {
+          errorMessage = validationMessage;
+        } else {
+          errorMessage = 'Please check your email and password format.';
+        }
+      } else if (error.response?.status === 503) {
         // Database connection error
         errorMessage = 'Database connection not available. The server is trying to connect. Please wait a moment and try again.';
       } else if (error.response?.data?.message) {

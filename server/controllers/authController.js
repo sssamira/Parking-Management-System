@@ -136,16 +136,25 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    // Validate input - check if email and password exist
+    if (!email || email.trim() === '') {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    if (!password || password.trim() === '') {
+      return res.status(400).json({ message: 'Password is required' });
     }
 
     console.log('🔐 Login attempt for email:', email);
     console.log('🔐 Password received (length):', password ? password.length : 0);
 
-    // Normalize email to lowercase and trim password
+    // Normalize email - validation middleware should have already normalized it, but do it again to be safe
     const normalizedEmail = email.toLowerCase().trim();
+    
+    // Basic email format check (in case validation middleware didn't catch it)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
     // Don't trim password here - we want to compare exactly what user entered
     // But we'll handle trimming in the comparison logic
     const enteredPassword = password; // Keep original, but we'll trim during comparison if needed
