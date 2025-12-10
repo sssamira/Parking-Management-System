@@ -406,9 +406,9 @@ const BookSpot = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Search Filters Form */}
-          <div className="lg:col-span-1">
+          <div className="max-w-2xl mx-auto w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-semibold text-indigo-900 mb-4">Search & Submit Form</h2>
               <p className="text-sm text-gray-600 mb-4">Fill in the details below to search for spots or submit your requirements to the admin.</p>
@@ -596,32 +596,19 @@ const BookSpot = () => {
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={searchSpots}
-                    disabled={loading || !filters.location}
-                    className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    {loading ? 'Searching...' : '🔍 Search Available Spots'}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    {loading ? 'Submitting...' : 'Submit to Admin'}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                >
+                  {loading ? 'Submitting...' : 'Submit to Admin'}
+                </button>
               </form>
             </div>
-          </div>
 
-          {/* Available Spots */}
-          <div className="lg:col-span-2">
-            {selectedSpot ? (
-              /* Booking Form */
-              <div className="bg-white rounded-2xl shadow-lg p-6">
+            {/* Booking Form - Shows when spot is selected */}
+            {selectedSpot && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                 <h2 className="text-xl font-semibold text-indigo-900 mb-4">Complete Your Booking</h2>
                 
                 <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
@@ -736,86 +723,70 @@ const BookSpot = () => {
                   </div>
                 </form>
               </div>
-            ) : (
-              /* Spots List */
-              <div className="bg-white rounded-2xl shadow-lg p-6">
+            )}
+
+            {/* Display search results inline when spots are found */}
+            {spots.length > 0 && !selectedSpot && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-indigo-900">
-                    Available Spots
+                    Available Spots Found
                   </h2>
-                  {spots.length > 0 && (
-                    <span className="text-sm text-gray-600 bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                      {spots.length} {spots.length === 1 ? 'spot' : 'spots'} available
-                    </span>
-                  )}
+                  <span className="text-sm text-gray-600 bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                    {spots.length} {spots.length === 1 ? 'spot' : 'spots'} available
+                  </span>
                 </div>
                 
-                {spots.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 mb-2">No spots available.</p>
-                    <p className="text-sm text-gray-400">
-                      {filters.startTime && filters.endTime 
-                        ? 'Try adjusting your search filters or time range.' 
-                        : 'Select a location and click "Search Available Spots" to find parking spots.'}
-                    </p>
-                    {filters.location && !filters.startTime && (
-                      <p className="text-xs text-gray-400 mt-2">
-                        💡 Tip: Add start and end time to check availability for specific dates.
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {spots.map((spot) => (
-                      <div
-                        key={spot._id}
-                        className="border-2 border-green-200 bg-green-50 rounded-lg p-4 hover:border-green-300 hover:shadow-md transition"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-indigo-900">
-                                Spot {spot.spotNum} - {spot.parkinglotName}
-                              </h3>
-                              <span className="px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full font-semibold">
-                                ✓ Available
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Floor {spot.floor} • {spot.location}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              Vehicle Type: {spot.vehicleType} • ৳{spot.pricePerHour}/hour
-                            </p>
-                            {filters.startTime && filters.endTime && (
-                              <p className="text-xs text-green-700 mt-2 font-medium">
-                                ✓ Available for your selected time: {new Date(filters.startTime).toLocaleString()} - {new Date(filters.endTime).toLocaleString()}
-                              </p>
-                            )}
-                            {spot.tags && spot.tags.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {spot.tags.map((tag, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
+                <div className="space-y-4">
+                  {spots.map((spot) => (
+                    <div
+                      key={spot._id}
+                      className="border-2 border-green-200 bg-green-50 rounded-lg p-4 hover:border-green-300 hover:shadow-md transition"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-indigo-900">
+                              Spot {spot.spotNum} - {spot.parkinglotName}
+                            </h3>
+                            <span className="px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full font-semibold">
+                              ✓ Available
+                            </span>
                           </div>
-                          <button
-                            onClick={() => handleSelectSpot(spot)}
-                            className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold whitespace-nowrap"
-                          >
-                            Book Now
-                          </button>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Floor {spot.floor} • {spot.location}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Vehicle Type: {spot.vehicleType} • ৳{spot.pricePerHour}/hour
+                          </p>
+                          {filters.startTime && filters.endTime && (
+                            <p className="text-xs text-green-700 mt-2 font-medium">
+                              ✓ Available for your selected time: {new Date(filters.startTime).toLocaleString()} - {new Date(filters.endTime).toLocaleString()}
+                            </p>
+                          )}
+                          {spot.tags && spot.tags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {spot.tags.map((tag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
+                        <button
+                          onClick={() => handleSelectSpot(spot)}
+                          className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold whitespace-nowrap"
+                        >
+                          Book Now
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
