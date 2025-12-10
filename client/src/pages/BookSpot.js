@@ -434,24 +434,13 @@ const BookSpot = () => {
                   />
                 </div>
 
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={searchSpots}
-                    disabled={loading}
-                    className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    {loading ? 'Searching...' : 'Search Spots'}
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    {loading ? 'Submitting...' : 'Submit to Admin'}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                >
+                  {loading ? 'Submitting...' : 'Submit to Admin'}
+                </button>
               </form>
             </div>
           </div>
