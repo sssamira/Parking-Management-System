@@ -51,7 +51,7 @@ const AdminBookings = () => {
       setBookings(bookingsData);
     } catch (err) {
       console.error('Error fetching pending bookings:', err);
-      alert('Failed to load pending bookings');
+      window.alert('Failed to load pending bookings');
     } finally {
       setLoading(false);
     }
@@ -60,29 +60,61 @@ const AdminBookings = () => {
   const handleApprove = async (bookingId) => {
     try {
       setProcessing(bookingId);
-      await api.patch(`/bookings/${bookingId}/approve`);
-      alert('Booking approved successfully! User will receive confirmation email.');
-      await fetchPendingBookings(); // Refresh list
+      const response = await api.patch(`/bookings/${bookingId}/approve`);
+      
+      // Immediately remove from local state for instant UI update
+      setBookings(prevBookings => prevBookings.filter(booking => booking._id !== bookingId));
+      
+      window.alert('Booking approved successfully! User will receive confirmation email.');
+      
+      // Then refresh from server to ensure consistency
+      await fetchPendingBookings();
     } catch (err) {
       console.error('Error approving booking:', err);
-      alert(err.response?.data?.message || 'Failed to approve booking');
+      const errorData = err.response?.data;
+      const errorMessage = errorData?.message || 'Failed to approve booking';
+      
+      // Check if it's a "no spots available" error
+      if (errorData?.code === 'NO_SPOTS_AT_LOCATION' || errorData?.code === 'NO_AVAILABLE_SPOTS') {
+        const location = errorData?.location || 'this location';
+        const addMore = window.confirm(
+          `${errorMessage}\n\nWould you like to add more spots for "${location}"?`
+        );
+        
+        if (addMore) {
+          // Redirect to add spots page with location pre-filled
+          window.location.href = `/admin/spots?location=${encodeURIComponent(location)}`;
+          return;
+        }
+      } else {
+        window.alert(errorMessage);
+      }
+      
+      // Refresh list even on error to ensure consistency
+      await fetchPendingBookings();
     } finally {
       setProcessing(null);
     }
   };
 
   const handleReject = async (bookingId) => {
-    const reason = prompt('Enter rejection reason (optional):');
+    const reason = window.prompt('Enter rejection reason (optional):');
     if (reason === null) return; // User cancelled
 
     try {
       setProcessing(bookingId);
       await api.patch(`/bookings/${bookingId}/reject`, { reason });
-      alert('Booking rejected successfully!');
-      await fetchPendingBookings(); // Refresh list
+      
+      // Immediately remove from local state for instant UI update
+      setBookings(prevBookings => prevBookings.filter(booking => booking._id !== bookingId));
+      
+      // Then refresh from server to ensure consistency
+      await fetchPendingBookings();
     } catch (err) {
       console.error('Error rejecting booking:', err);
-      alert(err.response?.data?.message || 'Failed to reject booking');
+      window.alert(err.response?.data?.message || 'Failed to reject booking');
+      // Refresh list even on error to ensure consistency
+      await fetchPendingBookings();
     } finally {
       setProcessing(null);
     }

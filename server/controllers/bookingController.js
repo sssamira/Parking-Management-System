@@ -33,20 +33,23 @@ const transporter = (() => {
 
 const sendBookingEmail = async ({ to, subject, html }) => {
   if (!transporter) {
-    // Silently skip if SMTP not configured
+    // Log warning if SMTP not configured
+    console.warn(`⚠️  SMTP not configured. Email not sent to: ${to}`);
     return;
   }
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: process.env.MAIL_FROM || `"Parking Management" <no-reply@parking.example>`,
       to,
       subject,
       html,
     });
-    console.log(`✅ Booking confirmation email sent to ${to}`);
+    console.log(`✅ Email sent successfully to ${to}`, info.messageId ? `(Message ID: ${info.messageId})` : '');
+    return info;
   } catch (err) {
-    console.error('❌ Failed to send booking email:', err.message);
-    // Don't throw - email failure shouldn't break booking
+    console.error(`❌ Failed to send email to ${to}:`, err.message);
+    // Re-throw so caller can handle it
+    throw err;
   }
 };
 
@@ -250,38 +253,124 @@ export const approveBooking = async (req, res) => {
 
     // Handle search queries differently from pending bookings
     if (booking.status === 'search_query') {
-      // For search queries, just mark as approved (admin will assign spot later)
+      // Check spot availability for the requested location
+      const requestedLocation = booking.location?.trim();
+      if (!requestedLocation) {
+        return res.status(400).json({ 
+          message: 'Cannot approve booking without a location specified' 
+        });
+      }
+
+      // Count total spots at this location (case-insensitive)
+      const totalSpots = await ParkingSpot.countDocuments({ 
+        location: { $regex: new RegExp(`^${requestedLocation}$`, 'i') }
+      });
+      
+      console.log('🔍 Checking spot availability:', {
+        location: requestedLocation,
+        totalSpots: totalSpots,
+        bookingId: booking._id
+      });
+      
+      if (totalSpots === 0) {
+        return res.status(409).json({ 
+          message: `No parking spots available at "${requestedLocation}". Do you want to add more spots?`,
+          code: 'NO_SPOTS_AT_LOCATION',
+          location: requestedLocation,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // Count how many bookings are already approved/booked for this location
+      // Use case-insensitive location matching
+      const locationRegex = new RegExp(`^${requestedLocation}$`, 'i');
+      let bookedCount = 0;
+      
+      if (booking.startTime && booking.endTime) {
+        // Count bookings with overlapping time periods
+        bookedCount = await Booking.countDocuments({
+          $or: [
+            { status: 'booked', location: locationRegex },
+            { status: 'approved', location: locationRegex }
+          ],
+          startTime: { $lt: new Date(booking.endTime) },
+          endTime: { $gt: new Date(booking.startTime) },
+          _id: { $ne: booking._id } // Exclude current booking
+        });
+      } else {
+        // If no time specified, count all approved/booked bookings for this location
+        bookedCount = await Booking.countDocuments({
+          $or: [
+            { status: 'booked', location: locationRegex },
+            { status: 'approved', location: locationRegex }
+          ],
+          _id: { $ne: booking._id }
+        });
+      }
+
+      // Check if spots are available
+      const availableSpots = totalSpots - bookedCount;
+      
+      console.log('📊 Spot availability check:', {
+        location: requestedLocation,
+        totalSpots: totalSpots,
+        bookedCount: bookedCount,
+        availableSpots: availableSpots,
+        bookingId: booking._id
+      });
+      
+      if (availableSpots <= 0) {
+        return res.status(409).json({ 
+          message: `All ${totalSpots} spot(s) at "${requestedLocation}" are already booked. Do you want to add more spots?`,
+          code: 'NO_AVAILABLE_SPOTS',
+          location: requestedLocation,
+          totalSpots: totalSpots,
+          bookedSpots: bookedCount,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // For search queries, mark as approved (admin will assign spot later)
       booking.status = 'approved';
       await booking.save();
 
       console.log('✅ Search query approved:', {
         bookingId: booking._id,
         user: booking.user.email,
-        location: booking.location
+        location: booking.location,
+        availableSpots: availableSpots,
+        totalSpots: totalSpots
       });
 
       // Send approval email for search query
-      sendBookingEmail({
-        to: booking.user.email,
-        subject: 'Your parking spot request has been approved',
-        html: `
-          <h2>Request Approved</h2>
-          <p>Hi ${booking.user.name || ''},</p>
-          <p>Your parking spot request has been approved by the admin.</p>
-          <ul>
-            <li><strong>Location:</strong> ${booking.location || 'N/A'}</li>
-            <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
-            ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
-            ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
-          </ul>
-          <p>We will contact you shortly with spot assignment details.</p>
-          <p>Thank you for choosing our service.</p>
-        `,
-      });
+      try {
+        await sendBookingEmail({
+          to: booking.user.email,
+          subject: 'Your parking spot request has been approved',
+          html: `
+            <h2>Request Approved</h2>
+            <p>Hi ${booking.user.name || ''},</p>
+            <p>Your parking spot request has been approved by the admin.</p>
+            <ul>
+              <li><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+              <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
+              ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+              ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
+            </ul>
+            <p>We will contact you shortly with spot assignment details.</p>
+            <p>Thank you for choosing our service.</p>
+          `,
+        });
+        console.log('📧 Approval email sent successfully to:', booking.user.email);
+      } catch (emailError) {
+        console.error('⚠️  Failed to send approval email, but booking was still approved:', emailError.message);
+      }
 
       return res.status(200).json({
         message: 'Search query approved successfully',
         booking,
+        availableSpots: availableSpots - 1, // Remaining after this approval
+        totalSpots: totalSpots
       });
     }
 
@@ -371,31 +460,55 @@ export const rejectBooking = async (req, res) => {
       });
     }
 
+    // Check if it's a search query before changing status
+    const isSearchQuery = booking.status === 'search_query' || !booking.parkingSpot;
+    
     booking.status = 'rejected';
     await booking.save();
 
     console.log('❌ Booking rejected:', {
       bookingId: booking._id,
       user: booking.user.email,
-      reason: reason || 'No reason provided'
+      reason: reason || 'No reason provided',
+      isSearchQuery: isSearchQuery
     });
 
-    // Optionally send rejection email to user
-    sendBookingEmail({
-      to: booking.user.email,
-      subject: 'Your parking spot booking request',
-      html: `
-        <h2>Booking Request Status</h2>
-        <p>Hi ${booking.user.name || ''},</p>
-        <p>Unfortunately, your parking spot reservation request could not be approved at this time.</p>
-        <ul>
-          <li><strong>Spot:</strong> ${booking.parkingSpot.parkinglotName} - ${booking.parkingSpot.spotNum}</li>
-          <li><strong>Location:</strong> ${booking.parkingSpot.location}</li>
-          ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
-        </ul>
-        <p>Please try booking another spot or contact support for assistance.</p>
-      `,
-    });
+    // Send rejection email to user immediately
+    try {
+      await sendBookingEmail({
+        to: booking.user.email,
+        subject: 'Your parking spot booking request has been rejected',
+        html: `
+          <h2>Booking Request Rejected</h2>
+          <p>Hi ${booking.user.name || 'User'},</p>
+          <p>We regret to inform you that your parking spot reservation request has been rejected by the administrator.</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <h3 style="margin-top: 0;">Request Details:</h3>
+            <ul style="list-style: none; padding: 0;">
+              ${isSearchQuery 
+                ? `<li style="margin: 8px 0;"><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+                   <li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
+                   ${booking.startTime ? `<li style="margin: 8px 0;"><strong>Start Time:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+                   ${booking.endTime ? `<li style="margin: 8px 0;"><strong>End Time:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
+                   ${booking.date ? `<li style="margin: 8px 0;"><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</li>` : ''}`
+                : `<li style="margin: 8px 0;"><strong>Spot:</strong> ${booking.parkingSpot?.parkinglotName || 'N/A'} - ${booking.parkingSpot?.spotNum || 'N/A'}</li>
+                   <li style="margin: 8px 0;"><strong>Location:</strong> ${booking.parkingSpot?.location || 'N/A'}</li>
+                   ${booking.startTime ? `<li style="margin: 8px 0;"><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+                   ${booking.endTime ? `<li style="margin: 8px 0;"><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}`
+              }
+              ${reason ? `<li style="margin: 8px 0; color: #dc2626;"><strong>Rejection Reason:</strong> ${reason}</li>` : ''}
+            </ul>
+          </div>
+          <p>You can submit a new booking request or contact our support team if you have any questions.</p>
+          <p>Thank you for your understanding.</p>
+          <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
+        `,
+      });
+      console.log('📧 Rejection email sent successfully to:', booking.user.email);
+    } catch (emailError) {
+      // Log email error but don't fail the rejection
+      console.error('⚠️  Failed to send rejection email, but booking was still rejected:', emailError.message);
+    }
 
     return res.status(200).json({
       message: 'Booking rejected successfully',

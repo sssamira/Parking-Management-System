@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 
 const AdminSpots = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     spotNum: '',
     parkinglotName: '',
@@ -35,7 +36,17 @@ const AdminSpots = () => {
       console.error('Error parsing user data:', e);
       navigate('/login');
     }
-  }, [navigate]);
+
+    // Pre-fill location from URL parameter if present
+    const locationParam = searchParams.get('location');
+    if (locationParam) {
+      setFormData(prev => ({
+        ...prev,
+        location: decodeURIComponent(locationParam)
+      }));
+      setSuccess(`Location pre-filled: ${decodeURIComponent(locationParam)}. Please add spots for this location.`);
+    }
+  }, [navigate, searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
