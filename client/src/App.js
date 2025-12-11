@@ -7,6 +7,7 @@ import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
 import MyFeedback from './pages/MyFeedback';
 import BookSpot from './pages/BookSpot';
+import AllSpots from './pages/AllSpots';
 import AdminSpots from './pages/AdminSpots';
 import AdminBookings from './pages/AdminBookings';
 
@@ -33,12 +34,12 @@ function App() {
 
     // Check immediately
     checkUser();
-    
+
     // Listen for storage changes (for cross-tab/window updates)
     window.addEventListener('storage', checkUser);
     // Listen for custom event (for same-window updates)
     window.addEventListener('localStorageChange', checkUser);
-    
+
     return () => {
       window.removeEventListener('storage', checkUser);
       window.removeEventListener('localStorageChange', checkUser);
@@ -49,7 +50,7 @@ function App() {
     <Router>
       <div className="relative min-h-screen">
         {/* Fixed Background */}
-        <div 
+        <div
           className="fixed inset-0 z-0"
           style={{
             backgroundImage: 'url(https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iA7GVdn9DpeY/v1/-1x-1.webp)',
@@ -58,15 +59,15 @@ function App() {
             backgroundRepeat: 'no-repeat',
           }}
         ></div>
-        
+
         {/* Overlay for better readability */}
         <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
-        
+
         {/* Content Container */}
         <div className="relative z-10">
           <Routes>
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 user ? (
                   <Homepage />
@@ -95,12 +96,13 @@ function App() {
                     </div>
                   </div>
                 )
-              } 
+              }
             />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/book-spot" element={<BookSpot />} />
+            <Route path="/all-spots" element={<AllSpots />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/my-feedback" element={<MyFeedback />} />
             <Route path="/admin/spots" element={<AdminSpots />} />

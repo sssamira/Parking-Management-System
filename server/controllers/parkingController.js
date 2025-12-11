@@ -6,11 +6,17 @@ export const getAvailableSpots = async (req, res) => {
     const { parkinglotName, location, vehicleType, startTime, endTime, minPrice, maxPrice } = req.query;
 
    
-    const spotQuery = {
-      ...(parkinglotName && { parkinglotName }),
-      ...(location && { location }),
-      ...(vehicleType && { vehicleType }),
-    };
+    const spotQuery = {};
+
+    if (parkinglotName) {
+      spotQuery.parkinglotName = { $regex: parkinglotName, $options: 'i' };
+    }
+    if (location) {
+      spotQuery.location = { $regex: location, $options: 'i' };
+    }
+    if (vehicleType && vehicleType !== 'All') {
+      spotQuery.vehicleType = vehicleType;
+    }
 
     if (minPrice || maxPrice) {
       spotQuery.pricePerHour = {

@@ -12,7 +12,7 @@ const BookSpot = () => {
   const [vehicles, setVehicles] = useState([]);
   const [locationPrice, setLocationPrice] = useState(null); // Store price info for selected location
   const [loadingPrice, setLoadingPrice] = useState(false); // Loading state for price fetch
-  
+
   // Search filters
   const [filters, setFilters] = useState({
     location: '',
@@ -66,7 +66,7 @@ const BookSpot = () => {
       ...filters,
       [name]: value,
     });
-    
+
     // If location changed, fetch price for that location
     if (name === 'location' && value) {
       // Show loading state immediately
@@ -75,22 +75,22 @@ const BookSpot = () => {
         location: value,
         loading: true
       });
-      
+
       try {
         const response = await api.get(`/parking?location=${encodeURIComponent(value)}`);
-        
+
         // Check both availableSpots and spots in response
         const spots = response.data?.availableSpots || response.data?.spots || [];
-        
+
         if (spots.length > 0) {
           // Calculate average price
           const prices = spots.map(spot => spot.pricePerHour || 0).filter(p => p > 0);
-          
+
           if (prices.length > 0) {
             const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
-            
+
             setLocationPrice({
               location: value,
               average: avgPrice.toFixed(2),
@@ -177,7 +177,7 @@ const BookSpot = () => {
       const params = new URLSearchParams();
       if (filters.location) params.append('location', filters.location);
       if (filters.vehicleType) params.append('vehicleType', filters.vehicleType);
-      
+
       // Only include time filters if both are provided for availability checking
       if (filters.startTime && filters.endTime) {
         params.append('startTime', new Date(filters.startTime).toISOString());
@@ -187,7 +187,7 @@ const BookSpot = () => {
       const response = await api.get(`/parking?${params.toString()}`);
       const availableSpots = response.data.availableSpots || response.data.spots || [];
       setSpots(availableSpots);
-      
+
       if (availableSpots.length === 0) {
         if (filters.startTime && filters.endTime) {
           setError('No available spots found for your selected location and time. Try adjusting your search filters or time range.');
@@ -233,7 +233,7 @@ const BookSpot = () => {
       });
 
       setSuccess('✅ Your search details have been successfully submitted and saved to the database! The admin will review your requirements.');
-      
+
       // Optionally reset form after successful submission
       // Uncomment the following lines if you want to clear the form after submission
       // setFilters({
@@ -248,7 +248,7 @@ const BookSpot = () => {
       // });
     } catch (err) {
       console.error('Submit error:', err);
-      
+
       // Don't redirect to login if it's a 401 - let the user see the error
       if (err.response?.status === 401) {
         setError('Session expired. Please login again.');
@@ -355,7 +355,7 @@ const BookSpot = () => {
             carType: vehicles.length > 0 ? vehicles[0].carType : ''
           }
         });
-        
+
         // Refresh spots to show updated availability
         setTimeout(() => {
           searchSpots();
@@ -367,7 +367,7 @@ const BookSpot = () => {
       console.error('❌ Booking error:', err);
       console.error('❌ Error response:', err.response?.data);
       console.error('❌ Error status:', err.response?.status);
-      
+
       if (err.response?.status === 401) {
         setError('Please login to book a spot');
         setTimeout(() => navigate('/login'), 2000);
@@ -417,7 +417,7 @@ const BookSpot = () => {
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-semibold text-indigo-900 mb-4">Search & Submit Form</h2>
               <p className="text-sm text-gray-600 mb-4">Fill in the details below to search for spots or submit your requirements to the admin.</p>
-              
+
               <form onSubmit={submitSearchDetails} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -494,8 +494,8 @@ const BookSpot = () => {
                         </p>
                       ) : (
                         <p className="text-sm text-blue-800 font-medium">
-                          💰 Hourly payment is ৳{locationPrice.hasRange 
-                            ? `${locationPrice.min} - ৳${locationPrice.max}` 
+                          💰 Hourly payment is ৳{locationPrice.hasRange
+                            ? `${locationPrice.min} - ৳${locationPrice.max}`
                             : locationPrice.average} for <span className="font-semibold">{locationPrice.location}</span> parking
                         </p>
                       )}
@@ -615,7 +615,7 @@ const BookSpot = () => {
             {selectedSpot && (
               <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                 <h2 className="text-xl font-semibold text-indigo-900 mb-4">Complete Your Booking</h2>
-                
+
                 <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
                   <p className="text-sm text-gray-600">Selected Spot:</p>
                   <p className="font-semibold text-indigo-900">
@@ -741,7 +741,7 @@ const BookSpot = () => {
                     {spots.length} {spots.length === 1 ? 'spot' : 'spots'} available
                   </span>
                 </div>
-                
+
                 <div className="space-y-4">
                   {spots.map((spot) => (
                     <div
