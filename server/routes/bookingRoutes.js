@@ -1,7 +1,13 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { createBooking, getUserBookings } from '../controllers/bookingController.js';
-import { protect } from '../middleware/auth.js';
+import { 
+  createBooking, 
+  getUserBookings, 
+  getPendingBookings, 
+  approveBooking, 
+  rejectBooking 
+} from '../controllers/bookingController.js';
+import { protect, admin } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -18,6 +24,11 @@ const bookingValidation = [
 
 router.post('/', protect, bookingValidation, createBooking);
 router.get('/', protect, getUserBookings);
+
+// Admin routes
+router.get('/admin/pending', protect, admin, getPendingBookings);
+router.patch('/:id/approve', protect, admin, approveBooking);
+router.patch('/:id/reject', protect, admin, rejectBooking);
 
 export default router;
 

@@ -51,13 +51,20 @@ const sendBookingEmail = async ({ to, subject, html }) => {
 };
 
 // Helper: check overlap
-const hasOverlap = async ({ spotId, startTime, endTime }) => {
-  const conflict = await Booking.exists({
+const hasOverlap = async ({ spotId, startTime, endTime, excludeBookingId = null }) => {
+  const query = {
     parkingSpot: spotId,
-    status: 'booked',
+    status: { $in: ['booked', 'pending'] }, // Check both booked and pending bookings
     startTime: { $lt: endTime },
     endTime: { $gt: startTime },
-  });
+  };
+  
+  // Exclude current booking if provided (for update operations)
+  if (excludeBookingId) {
+    query._id = { $ne: excludeBookingId };
+  }
+  
+  const conflict = await Booking.exists(query);
   return Boolean(conflict);
 };
 
@@ -117,7 +124,7 @@ export const createBooking = async (req, res) => {
       },
       startTime: start,
       endTime: end,
-      status: 'booked', // Explicitly set status to 'booked'
+      status: 'pending', // Set status to 'pending' - needs admin approval
       price,
     });
 
@@ -131,24 +138,8 @@ export const createBooking = async (req, res) => {
       price: booking.price
     });
 
-    // Fire-and-forget email
-    sendBookingEmail({
-      to: req.user.email,
-      subject: 'Your parking spot is booked',
-      html: `
-        <h2>Booking Confirmed</h2>
-        <p>Hi ${req.user.name || ''},</p>
-        <p>Your parking spot reservation is confirmed.</p>
-        <ul>
-          <li><strong>Spot:</strong> ${spot.parkinglotName} - ${spot.spotNum}</li>
-          <li><strong>Location:</strong> ${spot.location}</li>
-          <li><strong>From:</strong> ${start.toLocaleString()}</li>
-          <li><strong>To:</strong> ${end.toLocaleString()}</li>
-          <li><strong>Price:</strong> $${price}</li>
-        </ul>
-        <p>Thank you for choosing our service.</p>
-      `,
-    });
+    // Email will be sent after admin approval
+    console.log('📧 Booking created with pending status. Email will be sent after admin approval.');
 
     return res.status(201).json({
       message: 'Booking created successfully',
@@ -192,6 +183,228 @@ export const getUserBookings = async (req, res) => {
     console.error('Get bookings error:', err);
     return res.status(500).json({ 
       message: 'Server error while fetching bookings',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// @desc    Get all pending bookings and search queries (admin only)
+// @route   GET /api/bookings/admin/pending
+// @access  Private/Admin
+export const getPendingBookings = async (req, res) => {
+  try {
+    // Get both pending bookings and search queries
+    const bookings = await Booking.find({ 
+      status: { $in: ['pending', 'search_query'] } 
+    })
+      .populate({
+        path: 'user',
+        select: 'name email phone',
+        model: 'User'
+      })
+      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour vehicleType')
+      .sort({ createdAt: -1 });
+
+    console.log('📋 Admin fetching pending bookings:', {
+      count: bookings.length,
+      bookings: bookings.map(b => ({
+        id: b._id,
+        userId: b.user?._id || b.user,
+        userName: b.user?.name,
+        userEmail: b.user?.email,
+        status: b.status
+      }))
+    });
+
+    return res.status(200).json({
+      bookings,
+      count: bookings.length,
+    });
+  } catch (err) {
+    console.error('Get pending bookings error:', err);
+    return res.status(500).json({ 
+      message: 'Server error while fetching pending bookings',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// @desc    Approve a booking (admin only)
+// @route   PATCH /api/bookings/:id/approve
+// @access  Private/Admin
+export const approveBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'pending' && booking.status !== 'search_query') {
+      return res.status(400).json({ 
+        message: `Booking is already ${booking.status}. Only pending bookings and search queries can be approved.` 
+      });
+    }
+
+    // Handle search queries differently from pending bookings
+    if (booking.status === 'search_query') {
+      // For search queries, just mark as approved (admin will assign spot later)
+      booking.status = 'approved';
+      await booking.save();
+
+      console.log('✅ Search query approved:', {
+        bookingId: booking._id,
+        user: booking.user.email,
+        location: booking.location
+      });
+
+      // Send approval email for search query
+      sendBookingEmail({
+        to: booking.user.email,
+        subject: 'Your parking spot request has been approved',
+        html: `
+          <h2>Request Approved</h2>
+          <p>Hi ${booking.user.name || ''},</p>
+          <p>Your parking spot request has been approved by the admin.</p>
+          <ul>
+            <li><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+            <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
+            ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+            ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
+          </ul>
+          <p>We will contact you shortly with spot assignment details.</p>
+          <p>Thank you for choosing our service.</p>
+        `,
+      });
+
+      return res.status(200).json({
+        message: 'Search query approved successfully',
+        booking,
+      });
+    }
+
+    // For pending bookings, check for conflicts and assign spot
+    if (!booking.parkingSpot) {
+      return res.status(400).json({ 
+        message: 'Cannot approve booking without a parking spot assigned' 
+      });
+    }
+
+    // Check for conflicts with approved bookings (exclude current booking)
+    const overlap = await hasOverlap({ 
+      spotId: booking.parkingSpot._id, 
+      startTime: booking.startTime, 
+      endTime: booking.endTime,
+      excludeBookingId: booking._id
+    });
+    
+    if (overlap) {
+      return res.status(409).json({ 
+        message: 'This parking spot is already booked for the selected time window' 
+      });
+    }
+
+    // Update status to 'booked' (approved)
+    booking.status = 'booked';
+    await booking.save();
+
+    console.log('✅ Booking approved:', {
+      bookingId: booking._id,
+      user: booking.user.email,
+      spot: booking.parkingSpot.parkinglotName
+    });
+
+    // Send confirmation email to user
+    const start = new Date(booking.startTime);
+    const end = new Date(booking.endTime);
+    
+    sendBookingEmail({
+      to: booking.user.email,
+      subject: 'Your parking spot booking is confirmed',
+      html: `
+        <h2>Booking Confirmed</h2>
+        <p>Hi ${booking.user.name || ''},</p>
+        <p>Your parking spot reservation has been approved and confirmed.</p>
+        <ul>
+          <li><strong>Spot:</strong> ${booking.parkingSpot.parkinglotName} - ${booking.parkingSpot.spotNum}</li>
+          <li><strong>Location:</strong> ${booking.parkingSpot.location}</li>
+          <li><strong>From:</strong> ${start.toLocaleString()}</li>
+          <li><strong>To:</strong> ${end.toLocaleString()}</li>
+          <li><strong>Price:</strong> ৳${booking.price}</li>
+        </ul>
+        <p>Thank you for choosing our service.</p>
+      `,
+    });
+
+    return res.status(200).json({
+      message: 'Booking approved successfully',
+      booking,
+    });
+  } catch (err) {
+    console.error('Approve booking error:', err);
+    return res.status(500).json({ 
+      message: 'Server error while approving booking',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// @desc    Reject a booking (admin only)
+// @route   PATCH /api/bookings/:id/reject
+// @access  Private/Admin
+export const rejectBooking = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('parkingSpot', 'parkinglotName spotNum location');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'pending' && booking.status !== 'search_query') {
+      return res.status(400).json({ 
+        message: `Booking is already ${booking.status}. Only pending bookings and search queries can be rejected.` 
+      });
+    }
+
+    booking.status = 'rejected';
+    await booking.save();
+
+    console.log('❌ Booking rejected:', {
+      bookingId: booking._id,
+      user: booking.user.email,
+      reason: reason || 'No reason provided'
+    });
+
+    // Optionally send rejection email to user
+    sendBookingEmail({
+      to: booking.user.email,
+      subject: 'Your parking spot booking request',
+      html: `
+        <h2>Booking Request Status</h2>
+        <p>Hi ${booking.user.name || ''},</p>
+        <p>Unfortunately, your parking spot reservation request could not be approved at this time.</p>
+        <ul>
+          <li><strong>Spot:</strong> ${booking.parkingSpot.parkinglotName} - ${booking.parkingSpot.spotNum}</li>
+          <li><strong>Location:</strong> ${booking.parkingSpot.location}</li>
+          ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+        </ul>
+        <p>Please try booking another spot or contact support for assistance.</p>
+      `,
+    });
+
+    return res.status(200).json({
+      message: 'Booking rejected successfully',
+      booking,
+    });
+  } catch (err) {
+    console.error('Reject booking error:', err);
+    return res.status(500).json({ 
+      message: 'Server error while rejecting booking',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }

@@ -25,8 +25,8 @@ const bookingSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['booked','completed','cancelled', 'search_query'], 
-    default: 'search_query' 
+    enum: ['pending', 'approved', 'rejected', 'booked', 'completed', 'cancelled', 'search_query'], 
+    default: 'pending' 
   },
   discountApplied: { 
     type: mongoose.Schema.Types.ObjectId, 
