@@ -339,7 +339,12 @@ const BookSpot = () => {
       console.log('✅ Booking response:', response.data);
 
       if (response.data && response.data.booking) {
-        setSuccess(`✅ Booking confirmed! Your booking ID is ${response.data.booking._id}. A confirmation email has been sent to ${user?.email || 'your email'}.`);
+        const bookingStatus = response.data.booking.status;
+        if (bookingStatus === 'pending') {
+          setSuccess(`✅ Booking request submitted! Your booking ID is ${response.data.booking._id}. Your request is pending admin approval. You will receive an email notification once it's approved or rejected.`);
+        } else {
+          setSuccess(`✅ Booking confirmed! Your booking ID is ${response.data.booking._id}. A confirmation email has been sent to ${user?.email || 'your email'}.`);
+        }
         setSelectedSpot(null);
         setBookingData({
           parkingSpotId: '',

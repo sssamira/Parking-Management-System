@@ -50,21 +50,49 @@ const Homepage = () => {
       const bookingsResponse = await api.get('/bookings');
       const bookings = bookingsResponse.data?.bookings || [];
 
-      // Create notifications from bookings
+      // Create notifications for approved/booked bookings - just show email sent message
+      // Only show for bookings that were recently updated (within last hour) to indicate email was just sent
       const bookingNotifications = bookings
-        .filter(booking => booking.status === 'booked')
+        .filter(booking => {
+          if (booking.status !== 'booked' && booking.status !== 'approved') return false;
+          // Only show if booking was recently updated (within last hour)
+          const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          return updatedAt > oneHourAgo;
+        })
         .map(booking => {
-          const spotName = booking.parkingSpot?.parkinglotName || 'Parking Spot';
-          const spotNum = booking.parkingSpot?.spotNum || '';
-          const location = booking.parkingSpot?.location || 'location';
-          const startTime = booking.startTime ? new Date(booking.startTime) : null;
+          const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
           
           return {
-            id: `booking-${booking._id}`,
-            type: 'booking',
-            title: 'Booking Confirmed',
-            message: `Your parking spot ${spotName}${spotNum ? ` - ${spotNum}` : ''} at ${location} is confirmed.${startTime ? ` Starts: ${startTime.toLocaleString()}` : ''}`,
-            time: new Date(booking.createdAt),
+            id: `email-sent-${booking._id}`,
+            type: 'email',
+            title: 'Email Sent',
+            message: `An email has been sent to your account regarding your booking. Please check your mail.`,
+            time: updatedAt,
+            read: false,
+            link: '/book-spot'
+          };
+        });
+
+      // Add notifications for rejected bookings - just show email sent message
+      // Only show for bookings that were recently rejected (within last hour)
+      const rejectedNotifications = bookings
+        .filter(booking => {
+          if (booking.status !== 'rejected') return false;
+          // Only show if booking was recently updated (within last hour)
+          const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          return updatedAt > oneHourAgo;
+        })
+        .map(booking => {
+          const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
+          
+          return {
+            id: `email-sent-rejected-${booking._id}`,
+            type: 'email',
+            title: 'Email Sent',
+            message: `An email has been sent to your account regarding your booking. Please check your mail.`,
+            time: updatedAt,
             read: false,
             link: '/book-spot'
           };
@@ -95,8 +123,25 @@ const Homepage = () => {
           };
         });
 
+      // Add notifications for pending bookings (to show request submitted)
+      const pendingNotifications = bookings
+        .filter(booking => booking.status === 'pending' || booking.status === 'search_query')
+        .map(booking => {
+          const location = booking.parkingSpot?.location || booking.location || 'location';
+          
+          return {
+            id: `pending-${booking._id}`,
+            type: 'pending',
+            title: 'Booking Request Submitted',
+            message: `Your parking request at ${location} has been submitted and is pending admin approval. You will receive an email notification once it's reviewed.`,
+            time: new Date(booking.createdAt),
+            read: false,
+            link: '/book-spot'
+          };
+        });
+
       // Combine all notifications
-      const allNotifications = [...bookingNotifications, ...upcomingBookings];
+      const allNotifications = [...bookingNotifications, ...rejectedNotifications, ...pendingNotifications, ...upcomingBookings];
       
       // Sort by time (newest first)
       allNotifications.sort((a, b) => new Date(b.time) - new Date(a.time));
@@ -214,6 +259,11 @@ const Homepage = () => {
                                 {new Date(notification.time).toLocaleString()}
                               </p>
                             </div>
+                            {notification.type === 'email' && (
+                              <span className="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                                Email
+                              </span>
+                            )}
                             {notification.type === 'booking' && (
                               <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                                 Booking
@@ -222,6 +272,11 @@ const Homepage = () => {
                             {notification.type === 'reminder' && (
                               <span className="flex-shrink-0 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
                                 Reminder
+                              </span>
+                            )}
+                            {notification.type === 'pending' && (
+                              <span className="flex-shrink-0 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                Pending
                               </span>
                             )}
                           </div>
