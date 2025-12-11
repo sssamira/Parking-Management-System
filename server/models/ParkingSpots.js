@@ -6,7 +6,7 @@ const parkingSpotSchema = new mongoose.Schema({
     required: true, 
     trim: true 
   }, 
-  parkinglotName: { 
+  area: { 
     type: String, 
     required: true, 
     trim: true 
@@ -15,7 +15,7 @@ const parkingSpotSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
-  location: { 
+  parkingLotName: { 
     type: String, 
     required: true 
   }, 
@@ -35,6 +35,6 @@ const parkingSpotSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-parkingSpotSchema.index({ parkinglotName: 1, spotNum: 1 }, { unique: true });
+parkingSpotSchema.index({ area: 1, spotNum: 1 }, { unique: true });
 
 export default mongoose.model('ParkingSpot', parkingSpotSchema);

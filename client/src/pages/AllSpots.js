@@ -13,7 +13,7 @@ const AllSpots = () => {
 
     // Search filters
     const [filters, setFilters] = useState({
-        location: '',
+        parkingLotName: '',
         vehicleType: '',
         minPrice: '',
         maxPrice: '',
@@ -88,7 +88,7 @@ const AllSpots = () => {
 
         try {
             const params = new URLSearchParams();
-            if (filters.location) params.append('location', filters.location);
+            if (filters.parkingLotName) params.append('parkingLotName', filters.parkingLotName);
             if (filters.vehicleType) params.append('vehicleType', filters.vehicleType);
             if (filters.minPrice) params.append('minPrice', filters.minPrice);
             if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
@@ -204,11 +204,11 @@ const AllSpots = () => {
                             <h2 className="text-lg font-semibold mb-4">Filter Spots</h2>
                             <form onSubmit={handleSearch} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Parking Lot Name</label>
                                     <input
                                         type="text"
-                                        name="location"
-                                        value={filters.location}
+                                        name="parkingLotName"
+                                        value={filters.parkingLotName}
                                         onChange={handleFilterChange}
                                         placeholder="e.g. Bashundhara"
                                         className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
@@ -290,7 +290,7 @@ const AllSpots = () => {
                                 </div>
 
                                 <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm">
-                                    <p><strong>Location:</strong> {selectedSpot.location} ({selectedSpot.parkinglotName})</p>
+                                    <p><strong>Parking Lot Name:</strong> {selectedSpot.parkingLotName} ({selectedSpot.area})</p>
                                     <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
                                 </div>
 
@@ -372,8 +372,8 @@ const AllSpots = () => {
                                 <div key={spot._id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h3 className="font-bold text-lg text-gray-800">{spot.parkinglotName}</h3>
-                                            <p className="text-gray-500 text-sm">{spot.location}</p>
+                                            <h3 className="font-bold text-lg text-gray-800">{spot.area}</h3>
+                                            <p className="text-gray-500 text-sm">{spot.parkingLotName}</p>
                                             <div className="flex gap-2 mt-2">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{spot.vehicleType}</span>
                                                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">৳{spot.pricePerHour}/hr</span>

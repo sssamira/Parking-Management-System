@@ -108,15 +108,15 @@ const Homepage = () => {
           return start > now && start <= tomorrow;
         })
         .map(booking => {
-          const spotName = booking.parkingSpot?.parkinglotName || 'Parking Spot';
-          const location = booking.parkingSpot?.location || 'location';
+          const spotName = booking.parkingSpot?.area || 'Parking Spot';
+          const parkingLotName = booking.parkingSpot?.parkingLotName || 'parking lot';
           const startTime = new Date(booking.startTime);
           
           return {
             id: `reminder-${booking._id}`,
             type: 'reminder',
             title: 'Upcoming Booking',
-            message: `Your booking at ${location} (${spotName}) starts in less than 24 hours.`,
+            message: `Your booking at ${parkingLotName} (${spotName}) starts in less than 24 hours.`,
             time: startTime,
             read: false,
             link: '/book-spot'
@@ -127,13 +127,13 @@ const Homepage = () => {
       const pendingNotifications = bookings
         .filter(booking => booking.status === 'pending' || booking.status === 'search_query')
         .map(booking => {
-          const location = booking.parkingSpot?.location || booking.location || 'location';
+          const parkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingLotName || 'parking lot';
           
           return {
             id: `pending-${booking._id}`,
             type: 'pending',
             title: 'Booking Request Submitted',
-            message: `Your parking request at ${location} has been submitted and is pending admin approval. You will receive an email notification once it's reviewed.`,
+            message: `Your parking request at ${parkingLotName} has been submitted and is pending admin approval. You will receive an email notification once it's reviewed.`,
             time: new Date(booking.createdAt),
             read: false,
             link: '/book-spot'

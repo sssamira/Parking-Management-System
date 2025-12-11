@@ -6,7 +6,7 @@ const searchQuerySchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  location: {
+  parkingLotName: {
     type: String,
     trim: true
   },

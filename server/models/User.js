@@ -85,7 +85,7 @@ const userSchema = new mongoose.Schema(
     
     // Search Queries - Store booking search details
     searchQueries: [{
-      location: {
+      parkingLotName: {
         type: String,
         trim: true
       },

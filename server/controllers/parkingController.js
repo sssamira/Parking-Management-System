@@ -3,16 +3,16 @@ import Booking from '../models/Booking.js';
 
 export const getAvailableSpots = async (req, res) => {
   try {
-    const { parkinglotName, location, vehicleType, startTime, endTime, minPrice, maxPrice } = req.query;
+    const { area, parkingLotName, vehicleType, startTime, endTime, minPrice, maxPrice } = req.query;
 
    
     const spotQuery = {};
 
-    if (parkinglotName) {
-      spotQuery.parkinglotName = { $regex: parkinglotName, $options: 'i' };
+    if (area) {
+      spotQuery.area = { $regex: area, $options: 'i' };
     }
-    if (location) {
-      spotQuery.location = { $regex: location, $options: 'i' };
+    if (parkingLotName) {
+      spotQuery.parkingLotName = { $regex: parkingLotName, $options: 'i' };
     }
     if (vehicleType && vehicleType !== 'All') {
       spotQuery.vehicleType = vehicleType;
@@ -51,13 +51,13 @@ export const getAvailableSpots = async (req, res) => {
 
 export const createParkingSpot = async (req, res) => {
   try {
-    const { spotNum, parkinglotName, floor, location, vehicleType, pricePerHour, tags } = req.body;
+    const { spotNum, area, floor, parkingLotName, vehicleType, pricePerHour, tags } = req.body;
 
     const payload = {
       spotNum,
-      parkinglotName,
+      area,
       floor,
-      location,
+      parkingLotName,
       ...(vehicleType && { vehicleType }),
       ...(pricePerHour !== undefined && { pricePerHour }),
       ...(Array.isArray(tags) && { tags }),

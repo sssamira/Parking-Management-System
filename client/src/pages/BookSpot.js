@@ -10,12 +10,12 @@ const BookSpot = () => {
   const [success, setSuccess] = useState('');
   const [user, setUser] = useState(null);
   const [vehicles, setVehicles] = useState([]);
-  const [locationPrice, setLocationPrice] = useState(null); // Store price info for selected location
+  const [locationPrice, setLocationPrice] = useState(null); // Store price info for selected parking lot name
   const [loadingPrice, setLoadingPrice] = useState(false); // Loading state for price fetch
 
   // Search filters
   const [filters, setFilters] = useState({
-    location: '',
+    parkingLotName: '',
     vehicleType: '',
     date: '',
     startTime: '',
@@ -67,8 +67,8 @@ const BookSpot = () => {
       [name]: value,
     });
 
-    // If location changed, fetch price for that location
-    if (name === 'location' && value) {
+    // If parking lot name changed, fetch price for that parking lot
+    if (name === 'parkingLotName' && value) {
       // Show loading state immediately
       setLoadingPrice(true);
       setLocationPrice({
@@ -77,7 +77,7 @@ const BookSpot = () => {
       });
 
       try {
-        const response = await api.get(`/parking?location=${encodeURIComponent(value)}`);
+        const response = await api.get(`/parking?parkingLotName=${encodeURIComponent(value)}`);
 
         // Check both availableSpots and spots in response
         const spots = response.data?.availableSpots || response.data?.spots || [];
@@ -136,8 +136,8 @@ const BookSpot = () => {
       } finally {
         setLoadingPrice(false);
       }
-    } else if (name === 'location' && !value) {
-      // Location cleared
+    } else if (name === 'parkingLotName' && !value) {
+      // Parking lot name cleared
       setLocationPrice(null);
       setLoadingPrice(false);
     }
@@ -167,15 +167,15 @@ const BookSpot = () => {
     setSelectedSpot(null);
 
     // Validation
-    if (!filters.location) {
-      setError('Please select a location to search for spots.');
+    if (!filters.parkingLotName) {
+      setError('Please select a parking lot name to search for spots.');
       setLoading(false);
       return;
     }
 
     try {
       const params = new URLSearchParams();
-      if (filters.location) params.append('location', filters.location);
+      if (filters.parkingLotName) params.append('parkingLotName', filters.parkingLotName);
       if (filters.vehicleType) params.append('vehicleType', filters.vehicleType);
 
       // Only include time filters if both are provided for availability checking
@@ -190,9 +190,9 @@ const BookSpot = () => {
 
       if (availableSpots.length === 0) {
         if (filters.startTime && filters.endTime) {
-          setError('No available spots found for your selected location and time. Try adjusting your search filters or time range.');
+          setError('No available spots found for your selected parking lot and time. Try adjusting your search filters or time range.');
         } else {
-          setError('No spots found for this location. Try selecting a different location or add time filters to check availability.');
+          setError('No spots found for this parking lot. Try selecting a different parking lot or add time filters to check availability.');
         }
       } else {
         setSuccess(`✅ Found ${availableSpots.length} ${availableSpots.length === 1 ? 'available spot' : 'available spots'}!`);
@@ -222,7 +222,7 @@ const BookSpot = () => {
       }
 
       const response = await api.post('/search-queries', {
-        location: filters.location,
+        parkingLotName: filters.parkingLotName,
         vehicleType: filters.vehicleType,
         date: filters.date,
         startTime: filters.startTime,
@@ -421,15 +421,15 @@ const BookSpot = () => {
               <form onSubmit={submitSearchDetails} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
+                    Parking Lot Name
                   </label>
                   <select
-                    name="location"
-                    value={filters.location}
+                    name="parkingLotName"
+                    value={filters.parkingLotName}
                     onChange={handleFilterChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="">All Locations</option>
+                    <option value="">All Parking Lots</option>
                     <optgroup label="Shopping Malls">
                       <option value="Bashundhara City">Bashundhara City</option>
                       <option value="Jamuna Future Park">Jamuna Future Park</option>
@@ -619,9 +619,9 @@ const BookSpot = () => {
                 <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
                   <p className="text-sm text-gray-600">Selected Spot:</p>
                   <p className="font-semibold text-indigo-900">
-                    {selectedSpot.spotNum} - {selectedSpot.parkinglotName} (Floor {selectedSpot.floor})
+                    {selectedSpot.spotNum} - {selectedSpot.area} (Floor {selectedSpot.floor})
                   </p>
-                  <p className="text-sm text-gray-600">Location: {selectedSpot.location}</p>
+                  <p className="text-sm text-gray-600">Parking Lot Name: {selectedSpot.parkingLotName}</p>
                   <p className="text-sm text-gray-600">Price: ৳{selectedSpot.pricePerHour}/hour</p>
                 </div>
 
@@ -752,14 +752,14 @@ const BookSpot = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-semibold text-indigo-900">
-                              Spot {spot.spotNum} - {spot.parkinglotName}
+                              Spot {spot.spotNum} - {spot.area}
                             </h3>
                             <span className="px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full font-semibold">
                               ✓ Available
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">
-                            Floor {spot.floor} • {spot.location}
+                            Floor {spot.floor} • {spot.parkingLotName}
                           </p>
                           <p className="text-sm text-gray-600">
                             Vehicle Type: {spot.vehicleType} • ৳{spot.pricePerHour}/hour

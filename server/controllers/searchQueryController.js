@@ -10,12 +10,12 @@ export const saveSearchQuery = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { location, vehicleType, date, startTime, endTime, carModel, driverName, licenseNumber } = req.body;
+    const { parkingLotName, vehicleType, date, startTime, endTime, carModel, driverName, licenseNumber } = req.body;
 
     // Create booking record with search query details
     const booking = await Booking.create({
       user: userId,
-      location: location || '',
+      parkingLotName: parkingLotName || '',
       vehicleType: vehicleType || '',
       date: date ? new Date(date) : null,
       startTime: startTime ? new Date(startTime) : null,

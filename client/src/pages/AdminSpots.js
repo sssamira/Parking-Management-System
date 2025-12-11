@@ -7,9 +7,9 @@ const AdminSpots = () => {
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     spotNum: '',
-    parkinglotName: '',
+    area: '',
     floor: '',
-    location: '',
+    parkingLotName: '',
     vehicleType: 'All',
     pricePerHour: '',
     tags: ''
@@ -37,14 +37,14 @@ const AdminSpots = () => {
       navigate('/login');
     }
 
-    // Pre-fill location from URL parameter if present
-    const locationParam = searchParams.get('location');
-    if (locationParam) {
+    // Pre-fill parking lot name from URL parameter if present
+    const parkingLotNameParam = searchParams.get('parkingLotName');
+    if (parkingLotNameParam) {
       setFormData(prev => ({
         ...prev,
-        location: decodeURIComponent(locationParam)
+        parkingLotName: decodeURIComponent(parkingLotNameParam)
       }));
-      setSuccess(`Location pre-filled: ${decodeURIComponent(locationParam)}. Please add spots for this location.`);
+      setSuccess(`Parking Lot Name pre-filled: ${decodeURIComponent(parkingLotNameParam)}. Please add spots for this parking lot.`);
     }
   }, [navigate, searchParams]);
 
@@ -72,9 +72,9 @@ const AdminSpots = () => {
 
       const payload = {
         spotNum: formData.spotNum,
-        parkinglotName: formData.parkinglotName,
+        area: formData.area,
         floor: parseInt(formData.floor),
-        location: formData.location,
+        parkingLotName: formData.parkingLotName,
         vehicleType: formData.vehicleType,
         pricePerHour: parseFloat(formData.pricePerHour) || 50,
         ...(tags.length > 0 && { tags })
@@ -82,14 +82,14 @@ const AdminSpots = () => {
 
       const response = await api.post('/parking', payload);
       
-      setSuccess(`✅ Parking spot "${formData.parkinglotName} - Spot ${formData.spotNum}" added successfully!`);
+      setSuccess(`✅ Parking spot "${formData.area} - Spot ${formData.spotNum}" added successfully!`);
       
       // Reset form
       setFormData({
         spotNum: '',
-        parkinglotName: '',
+        area: '',
         floor: '',
-        location: '',
+        parkingLotName: '',
         vehicleType: 'All',
         pricePerHour: '',
         tags: ''
@@ -151,12 +151,12 @@ const AdminSpots = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Parking Lot Name *
+                  Area *
                 </label>
                 <input
                   type="text"
-                  name="parkinglotName"
-                  value={formData.parkinglotName}
+                  name="area"
+                  value={formData.area}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -184,11 +184,11 @@ const AdminSpots = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location *
+                  Parking Lot Name *
                 </label>
                 <select
-                  name="location"
-                  value={formData.location}
+                  name="parkingLotName"
+                  value={formData.parkingLotName}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"

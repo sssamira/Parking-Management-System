@@ -75,15 +75,15 @@ const AdminBookings = () => {
       const errorMessage = errorData?.message || 'Failed to approve booking';
       
       // Check if it's a "no spots available" error
-      if (errorData?.code === 'NO_SPOTS_AT_LOCATION' || errorData?.code === 'NO_AVAILABLE_SPOTS') {
-        const location = errorData?.location || 'this location';
+      if (errorData?.code === 'NO_SPOTS_AT_PARKING_LOT' || errorData?.code === 'NO_AVAILABLE_SPOTS') {
+        const parkingLotName = errorData?.parkingLotName || 'this parking lot';
         const addMore = window.confirm(
-          `${errorMessage}\n\nWould you like to add more spots for "${location}"?`
+          `${errorMessage}\n\nWould you like to add more spots for "${parkingLotName}"?`
         );
         
         if (addMore) {
-          // Redirect to add spots page with location pre-filled
-          window.location.href = `/admin/spots?location=${encodeURIComponent(location)}`;
+          // Redirect to add spots page with parking lot name pre-filled
+          window.location.href = `/admin/spots?parkingLotName=${encodeURIComponent(parkingLotName)}`;
           return;
         }
       } else {
@@ -218,7 +218,7 @@ const AdminBookings = () => {
                           {isSearchQuery ? (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                Location: {booking.location || 'N/A'}
+                                Parking Lot Name: {booking.parkingLotName || 'N/A'}
                               </div>
                               <div className="text-xs text-gray-500">
                                 Vehicle Type: {booking.vehicleType || 'N/A'}
@@ -227,13 +227,13 @@ const AdminBookings = () => {
                           ) : (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {booking.parkingSpot?.parkinglotName || 'N/A'}
+                                {booking.parkingSpot?.area || 'N/A'}
                               </div>
                               <div className="text-sm text-gray-500">
                                 Spot: {booking.parkingSpot?.spotNum || 'N/A'}
                               </div>
                               <div className="text-xs text-gray-400">
-                                {booking.parkingSpot?.location || 'N/A'}
+                                {booking.parkingSpot?.parkingLotName || 'N/A'}
                               </div>
                             </div>
                           )}

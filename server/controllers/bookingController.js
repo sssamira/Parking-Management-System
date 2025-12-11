@@ -131,9 +131,13 @@ export const createBooking = async (req, res) => {
       price,
     });
 
+    // Populate user and parking spot to get email and spot details
+    await booking.populate('user', 'name email');
+    await booking.populate('parkingSpot', 'area spotNum parkingLotName floor pricePerHour');
+
     console.log('✅ Booking created successfully in database:', {
       bookingId: booking._id,
-      spot: spot.parkinglotName,
+      spot: spot.area,
       user: userId,
       status: booking.status,
       startTime: booking.startTime,
@@ -141,8 +145,45 @@ export const createBooking = async (req, res) => {
       price: booking.price
     });
 
-    // Email will be sent after admin approval
-    console.log('📧 Booking created with pending status. Email will be sent after admin approval.');
+    // Send confirmation email to user immediately after booking creation
+    try {
+      await sendBookingEmail({
+        to: booking.user.email,
+        subject: 'Parking Spot Booking Request Received',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563eb;">Booking Request Received</h2>
+            <p>Hi ${booking.user.name || 'User'},</p>
+            <p>Thank you for your parking spot booking request. We have received your reservation and it is currently pending admin approval.</p>
+            
+            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <h3 style="margin-top: 0; color: #1f2937;">Booking Details:</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;"><strong>Booking ID:</strong> ${booking._id}</li>
+                <li style="margin: 8px 0;"><strong>Spot:</strong> ${booking.parkingSpot?.area || 'N/A'} - ${booking.parkingSpot?.spotNum || 'N/A'}</li>
+                <li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingSpot?.parkingLotName || 'N/A'}</li>
+                ${booking.parkingSpot?.floor ? `<li style="margin: 8px 0;"><strong>Floor:</strong> ${booking.parkingSpot.floor}</li>` : ''}
+                <li style="margin: 8px 0;"><strong>From:</strong> ${start.toLocaleString()}</li>
+                <li style="margin: 8px 0;"><strong>To:</strong> ${end.toLocaleString()}</li>
+                <li style="margin: 8px 0;"><strong>Price:</strong> ৳${booking.price}</li>
+                ${booking.vehicle?.licensePlate ? `<li style="margin: 8px 0;"><strong>Vehicle License Plate:</strong> ${booking.vehicle.licensePlate}</li>` : ''}
+                ${booking.vehicle?.carType ? `<li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicle.carType}</li>` : ''}
+                <li style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #f59e0b; font-weight: bold;">Pending Approval</span></li>
+              </ul>
+            </div>
+            
+            <p style="color: #6b7280;">You will receive another email notification once your booking is approved or rejected by the administrator.</p>
+            <p>Thank you for choosing our parking management service.</p>
+            
+            <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
+          </div>
+        `,
+      });
+      console.log('📧 Booking confirmation email sent successfully to:', booking.user.email);
+    } catch (emailError) {
+      // Log email error but don't fail the booking creation
+      console.error('⚠️  Failed to send confirmation email, but booking was still created:', emailError.message);
+    }
 
     return res.status(201).json({
       message: 'Booking created successfully',
@@ -174,7 +215,7 @@ export const getUserBookings = async (req, res) => {
     }
 
     const bookings = await Booking.find({ user: userId })
-      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour')
+      .populate('parkingSpot', 'area spotNum parkingLotName floor pricePerHour')
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -205,7 +246,7 @@ export const getPendingBookings = async (req, res) => {
         select: 'name email phone',
         model: 'User'
       })
-      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour vehicleType')
+      .populate('parkingSpot', 'area spotNum parkingLotName floor pricePerHour vehicleType')
       .sort({ createdAt: -1 });
 
     console.log('📋 Admin fetching pending bookings:', {
@@ -239,7 +280,7 @@ export const approveBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('user', 'name email')
-      .populate('parkingSpot', 'parkinglotName spotNum location floor pricePerHour');
+      .populate('parkingSpot', 'area spotNum parkingLotName floor pricePerHour');
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -253,56 +294,56 @@ export const approveBooking = async (req, res) => {
 
     // Handle search queries differently from pending bookings
     if (booking.status === 'search_query') {
-      // Check spot availability for the requested location
-      const requestedLocation = booking.location?.trim();
-      if (!requestedLocation) {
+      // Check spot availability for the requested parking lot name
+      const requestedParkingLotName = booking.parkingLotName?.trim();
+      if (!requestedParkingLotName) {
         return res.status(400).json({ 
-          message: 'Cannot approve booking without a location specified' 
+          message: 'Cannot approve booking without a parking lot name specified' 
         });
       }
 
-      // Count total spots at this location (case-insensitive)
+      // Count total spots at this parking lot name (case-insensitive)
       const totalSpots = await ParkingSpot.countDocuments({ 
-        location: { $regex: new RegExp(`^${requestedLocation}$`, 'i') }
+        parkingLotName: { $regex: new RegExp(`^${requestedParkingLotName}$`, 'i') }
       });
       
       console.log('🔍 Checking spot availability:', {
-        location: requestedLocation,
+        parkingLotName: requestedParkingLotName,
         totalSpots: totalSpots,
         bookingId: booking._id
       });
       
       if (totalSpots === 0) {
         return res.status(409).json({ 
-          message: `No parking spots available at "${requestedLocation}". Do you want to add more spots?`,
-          code: 'NO_SPOTS_AT_LOCATION',
-          location: requestedLocation,
+          message: `No parking spots available at "${requestedParkingLotName}". Do you want to add more spots?`,
+          code: 'NO_SPOTS_AT_PARKING_LOT',
+          parkingLotName: requestedParkingLotName,
           suggestion: 'add_spots'
         });
       }
 
-      // Count how many bookings are already approved/booked for this location
-      // Use case-insensitive location matching
-      const locationRegex = new RegExp(`^${requestedLocation}$`, 'i');
+      // Count how many bookings are already approved/booked for this parking lot name
+      // Use case-insensitive parking lot name matching
+      const parkingLotNameRegex = new RegExp(`^${requestedParkingLotName}$`, 'i');
       let bookedCount = 0;
       
       if (booking.startTime && booking.endTime) {
         // Count bookings with overlapping time periods
         bookedCount = await Booking.countDocuments({
           $or: [
-            { status: 'booked', location: locationRegex },
-            { status: 'approved', location: locationRegex }
+            { status: 'booked', parkingLotName: parkingLotNameRegex },
+            { status: 'approved', parkingLotName: parkingLotNameRegex }
           ],
           startTime: { $lt: new Date(booking.endTime) },
           endTime: { $gt: new Date(booking.startTime) },
           _id: { $ne: booking._id } // Exclude current booking
         });
       } else {
-        // If no time specified, count all approved/booked bookings for this location
+        // If no time specified, count all approved/booked bookings for this parking lot name
         bookedCount = await Booking.countDocuments({
           $or: [
-            { status: 'booked', location: locationRegex },
-            { status: 'approved', location: locationRegex }
+            { status: 'booked', parkingLotName: parkingLotNameRegex },
+            { status: 'approved', parkingLotName: parkingLotNameRegex }
           ],
           _id: { $ne: booking._id }
         });
@@ -312,7 +353,7 @@ export const approveBooking = async (req, res) => {
       const availableSpots = totalSpots - bookedCount;
       
       console.log('📊 Spot availability check:', {
-        location: requestedLocation,
+        parkingLotName: requestedParkingLotName,
         totalSpots: totalSpots,
         bookedCount: bookedCount,
         availableSpots: availableSpots,
@@ -321,9 +362,9 @@ export const approveBooking = async (req, res) => {
       
       if (availableSpots <= 0) {
         return res.status(409).json({ 
-          message: `All ${totalSpots} spot(s) at "${requestedLocation}" are already booked. Do you want to add more spots?`,
+          message: `All ${totalSpots} spot(s) at "${requestedParkingLotName}" are already booked. Do you want to add more spots?`,
           code: 'NO_AVAILABLE_SPOTS',
-          location: requestedLocation,
+          parkingLotName: requestedParkingLotName,
           totalSpots: totalSpots,
           bookedSpots: bookedCount,
           suggestion: 'add_spots'
@@ -337,7 +378,7 @@ export const approveBooking = async (req, res) => {
       console.log('✅ Search query approved:', {
         bookingId: booking._id,
         user: booking.user.email,
-        location: booking.location,
+        parkingLotName: booking.parkingLotName,
         availableSpots: availableSpots,
         totalSpots: totalSpots
       });
@@ -348,17 +389,29 @@ export const approveBooking = async (req, res) => {
           to: booking.user.email,
           subject: 'Your parking spot request has been approved',
           html: `
-            <h2>Request Approved</h2>
-            <p>Hi ${booking.user.name || ''},</p>
-            <p>Your parking spot request has been approved by the admin.</p>
-            <ul>
-              <li><strong>Location:</strong> ${booking.location || 'N/A'}</li>
-              <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
-              ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
-              ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
-            </ul>
-            <p>We will contact you shortly with spot assignment details.</p>
-            <p>Thank you for choosing our service.</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #10b981;">Request Approved</h2>
+              <p>Hi ${booking.user.name || 'User'},</p>
+              <p>Great news! Your parking spot request has been approved by the administrator.</p>
+              
+              <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #1f2937;">Request Details:</h3>
+                <ul style="list-style: none; padding: 0;">
+                  <li style="margin: 8px 0;"><strong>Booking ID:</strong> ${booking._id}</li>
+                  <li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingLotName || 'N/A'}</li>
+                  <li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
+                  ${booking.startTime ? `<li style="margin: 8px 0;"><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+                  ${booking.endTime ? `<li style="margin: 8px 0;"><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
+                  ${booking.date ? `<li style="margin: 8px 0;"><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</li>` : ''}
+                  <li style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">Approved</span></li>
+                </ul>
+              </div>
+              
+              <p style="color: #059669; font-weight: bold;">We will contact you shortly with spot assignment details.</p>
+              <p>Thank you for choosing our parking management service.</p>
+              
+              <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
+            </div>
           `,
         });
         console.log('📧 Approval email sent successfully to:', booking.user.email);
@@ -402,30 +455,51 @@ export const approveBooking = async (req, res) => {
     console.log('✅ Booking approved:', {
       bookingId: booking._id,
       user: booking.user.email,
-      spot: booking.parkingSpot.parkinglotName
+      spot: booking.parkingSpot.area
     });
 
     // Send confirmation email to user
     const start = new Date(booking.startTime);
     const end = new Date(booking.endTime);
     
-    sendBookingEmail({
-      to: booking.user.email,
-      subject: 'Your parking spot booking is confirmed',
-      html: `
-        <h2>Booking Confirmed</h2>
-        <p>Hi ${booking.user.name || ''},</p>
-        <p>Your parking spot reservation has been approved and confirmed.</p>
-        <ul>
-          <li><strong>Spot:</strong> ${booking.parkingSpot.parkinglotName} - ${booking.parkingSpot.spotNum}</li>
-          <li><strong>Location:</strong> ${booking.parkingSpot.location}</li>
-          <li><strong>From:</strong> ${start.toLocaleString()}</li>
-          <li><strong>To:</strong> ${end.toLocaleString()}</li>
-          <li><strong>Price:</strong> ৳${booking.price}</li>
-        </ul>
-        <p>Thank you for choosing our service.</p>
-      `,
-    });
+    try {
+      await sendBookingEmail({
+        to: booking.user.email,
+        subject: 'Your parking spot booking is confirmed',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #10b981;">Booking Confirmed</h2>
+            <p>Hi ${booking.user.name || 'User'},</p>
+            <p>Great news! Your parking spot reservation has been approved and confirmed by the administrator.</p>
+            
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <h3 style="margin-top: 0; color: #1f2937;">Booking Details:</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;"><strong>Booking ID:</strong> ${booking._id}</li>
+                <li style="margin: 8px 0;"><strong>Spot:</strong> ${booking.parkingSpot.area} - ${booking.parkingSpot.spotNum}</li>
+                <li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingSpot.parkingLotName}</li>
+                ${booking.parkingSpot.floor ? `<li style="margin: 8px 0;"><strong>Floor:</strong> ${booking.parkingSpot.floor}</li>` : ''}
+                <li style="margin: 8px 0;"><strong>From:</strong> ${start.toLocaleString()}</li>
+                <li style="margin: 8px 0;"><strong>To:</strong> ${end.toLocaleString()}</li>
+                <li style="margin: 8px 0;"><strong>Price:</strong> ৳${booking.price}</li>
+                ${booking.vehicle?.licensePlate ? `<li style="margin: 8px 0;"><strong>Vehicle License Plate:</strong> ${booking.vehicle.licensePlate}</li>` : ''}
+                ${booking.vehicle?.carType ? `<li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicle.carType}</li>` : ''}
+                <li style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">Confirmed</span></li>
+              </ul>
+            </div>
+            
+            <p style="color: #059669; font-weight: bold;">Your booking is now active. Please arrive on time for your reservation.</p>
+            <p>Thank you for choosing our parking management service.</p>
+            
+            <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
+          </div>
+        `,
+      });
+      console.log('📧 Approval confirmation email sent successfully to:', booking.user.email);
+    } catch (emailError) {
+      // Log email error but don't fail the approval
+      console.error('⚠️  Failed to send approval email, but booking was still approved:', emailError.message);
+    }
 
     return res.status(200).json({
       message: 'Booking approved successfully',
@@ -448,7 +522,7 @@ export const rejectBooking = async (req, res) => {
     const { reason } = req.body;
     const booking = await Booking.findById(req.params.id)
       .populate('user', 'name email')
-      .populate('parkingSpot', 'parkinglotName spotNum location');
+      .populate('parkingSpot', 'area spotNum parkingLotName');
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -479,29 +553,40 @@ export const rejectBooking = async (req, res) => {
         to: booking.user.email,
         subject: 'Your parking spot booking request has been rejected',
         html: `
-          <h2>Booking Request Rejected</h2>
-          <p>Hi ${booking.user.name || 'User'},</p>
-          <p>We regret to inform you that your parking spot reservation request has been rejected by the administrator.</p>
-          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
-            <h3 style="margin-top: 0;">Request Details:</h3>
-            <ul style="list-style: none; padding: 0;">
-              ${isSearchQuery 
-                ? `<li style="margin: 8px 0;"><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #dc2626;">Booking Request Rejected</h2>
+            <p>Hi ${booking.user.name || 'User'},</p>
+            <p>We regret to inform you that your parking spot reservation request has been rejected by the administrator.</p>
+            
+            <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <h3 style="margin-top: 0; color: #1f2937;">Request Details:</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;"><strong>Booking ID:</strong> ${booking._id}</li>
+                ${isSearchQuery 
+                  ? `<li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingLotName || 'N/A'}</li>
                    <li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
                    ${booking.startTime ? `<li style="margin: 8px 0;"><strong>Start Time:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
                    ${booking.endTime ? `<li style="margin: 8px 0;"><strong>End Time:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
                    ${booking.date ? `<li style="margin: 8px 0;"><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</li>` : ''}`
-                : `<li style="margin: 8px 0;"><strong>Spot:</strong> ${booking.parkingSpot?.parkinglotName || 'N/A'} - ${booking.parkingSpot?.spotNum || 'N/A'}</li>
-                   <li style="margin: 8px 0;"><strong>Location:</strong> ${booking.parkingSpot?.location || 'N/A'}</li>
-                   ${booking.startTime ? `<li style="margin: 8px 0;"><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
-                   ${booking.endTime ? `<li style="margin: 8px 0;"><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}`
-              }
-              ${reason ? `<li style="margin: 8px 0; color: #dc2626;"><strong>Rejection Reason:</strong> ${reason}</li>` : ''}
-            </ul>
+                  : `<li style="margin: 8px 0;"><strong>Spot:</strong> ${booking.parkingSpot?.area || 'N/A'} - ${booking.parkingSpot?.spotNum || 'N/A'}</li>
+                     <li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingSpot?.parkingLotName || 'N/A'}</li>
+                     ${booking.parkingSpot?.floor ? `<li style="margin: 8px 0;"><strong>Floor:</strong> ${booking.parkingSpot.floor}</li>` : ''}
+                     ${booking.startTime ? `<li style="margin: 8px 0;"><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
+                     ${booking.endTime ? `<li style="margin: 8px 0;"><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
+                     ${booking.price ? `<li style="margin: 8px 0;"><strong>Price:</strong> ৳${booking.price}</li>` : ''}
+                     ${booking.vehicle?.licensePlate ? `<li style="margin: 8px 0;"><strong>Vehicle License Plate:</strong> ${booking.vehicle.licensePlate}</li>` : ''}
+                     ${booking.vehicle?.carType ? `<li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicle.carType}</li>` : ''}`
+                }
+                ${reason ? `<li style="margin: 8px 0; color: #dc2626; font-weight: bold;"><strong>Rejection Reason:</strong> ${reason}</li>` : ''}
+                <li style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #dc2626; font-weight: bold;">Rejected</span></li>
+              </ul>
+            </div>
+            
+            <p style="color: #6b7280;">You can submit a new booking request or contact our support team if you have any questions.</p>
+            <p>Thank you for your understanding.</p>
+            
+            <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
           </div>
-          <p>You can submit a new booking request or contact our support team if you have any questions.</p>
-          <p>Thank you for your understanding.</p>
-          <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
         `,
       });
       console.log('📧 Rejection email sent successfully to:', booking.user.email);
