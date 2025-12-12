@@ -193,7 +193,7 @@ const AdminSpots = () => {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  <option value="">Select Location</option>
+                  <option value="">Select Parking Lot Name</option>
                   <optgroup label="Shopping Malls">
                     <option value="Bashundhara City">Bashundhara City</option>
                     <option value="Jamuna Future Park">Jamuna Future Park</option>

@@ -90,7 +90,7 @@ export const createParkingSpot = async (req, res) => {
     }
 
     if (trimmedLocation === '') {
-      return res.status(400).json({ message: 'location is required' });
+      return res.status(400).json({ message: 'area is required' });
     }
 
     const payload = {

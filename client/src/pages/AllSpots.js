@@ -288,7 +288,7 @@ const AllSpots = () => {
                                 type="text"
                                 value={parkingLotSearch}
                                 onChange={(e) => setParkingLotSearch(e.target.value)}
-                                placeholder="Search by location keyword (e.g., Gulshan, Dhanmondi)"
+                                placeholder="Search by parking lot name or area keyword (e.g., Gulshan, Dhanmondi)"
                                 className="w-full md:w-96 px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             <div className="flex flex-wrap items-center gap-3 mt-3 md:mt-0">
@@ -458,7 +458,8 @@ const AllSpots = () => {
                                 </div>
 
                                     <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm">
-                                        <p><strong>Location:</strong> {selectedSpot.location} ({selectedSpot.parkingLotName || selectedSpot.parkinglotName})</p>
+                                        <p><strong>Parking Lot Name:</strong> {selectedSpot.parkingLotName || selectedSpot.parkinglotName || 'N/A'}</p>
+                                        <p><strong>Area:</strong> {selectedSpot.location || 'N/A'}</p>
                                     <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
                                 </div>
 
@@ -541,7 +542,7 @@ const AllSpots = () => {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <h3 className="font-bold text-lg text-gray-800">{spot.parkingLotName || spot.parkinglotName || 'Unnamed Parking Lot'}</h3>
-                                            <p className="text-gray-500 text-sm">{spot.location}</p>
+                                            <p className="text-gray-500 text-sm">Area: {spot.location || 'N/A'}</p>
                                             <div className="flex gap-2 mt-2">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{spot.vehicleType}</span>
                                                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">৳{spot.pricePerHour}/hr</span>

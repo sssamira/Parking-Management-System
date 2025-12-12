@@ -253,56 +253,63 @@ export const approveBooking = async (req, res) => {
 
     // Handle search queries differently from pending bookings
     if (booking.status === 'search_query') {
-      // Check spot availability for the requested location
-      const requestedLocation = booking.location?.trim();
-      if (!requestedLocation) {
+      // Check spot availability for the requested parking lot name
+      // Support both parkingLotName (new) and location (legacy) for backward compatibility
+      const requestedParkingLotName = (booking.parkingLotName || booking.location)?.trim();
+      if (!requestedParkingLotName) {
         return res.status(400).json({ 
-          message: 'Cannot approve booking without a location specified' 
+          message: 'Cannot approve booking without a parking lot name specified' 
         });
       }
 
-      // Count total spots at this location (case-insensitive)
+      // Count total spots at this parking lot name (case-insensitive)
+      // Search by parkingLotName field in ParkingSpot model
       const totalSpots = await ParkingSpot.countDocuments({ 
-        location: { $regex: new RegExp(`^${requestedLocation}$`, 'i') }
+        parkingLotName: { $regex: new RegExp(`^${requestedParkingLotName}$`, 'i') }
       });
       
       console.log('🔍 Checking spot availability:', {
-        location: requestedLocation,
+        parkingLotName: requestedParkingLotName,
         totalSpots: totalSpots,
         bookingId: booking._id
       });
       
       if (totalSpots === 0) {
         return res.status(409).json({ 
-          message: `No parking spots available at "${requestedLocation}". Do you want to add more spots?`,
-          code: 'NO_SPOTS_AT_LOCATION',
-          location: requestedLocation,
+          message: `No parking spots available at "${requestedParkingLotName}". Do you want to add more spots?`,
+          code: 'NO_SPOTS_AT_PARKING_LOT',
+          parkingLotName: requestedParkingLotName,
           suggestion: 'add_spots'
         });
       }
 
-      // Count how many bookings are already approved/booked for this location
-      // Use case-insensitive location matching
-      const locationRegex = new RegExp(`^${requestedLocation}$`, 'i');
+      // Count how many bookings are already approved/booked for this parking lot name
+      // Use case-insensitive parking lot name matching
+      const parkingLotNameRegex = new RegExp(`^${requestedParkingLotName}$`, 'i');
       let bookedCount = 0;
       
       if (booking.startTime && booking.endTime) {
         // Count bookings with overlapping time periods
+        // Check both parkingLotName and location fields for backward compatibility
         bookedCount = await Booking.countDocuments({
           $or: [
-            { status: 'booked', location: locationRegex },
-            { status: 'approved', location: locationRegex }
+            { status: 'booked', parkingLotName: parkingLotNameRegex },
+            { status: 'approved', parkingLotName: parkingLotNameRegex },
+            { status: 'booked', location: parkingLotNameRegex },
+            { status: 'approved', location: parkingLotNameRegex }
           ],
           startTime: { $lt: new Date(booking.endTime) },
           endTime: { $gt: new Date(booking.startTime) },
           _id: { $ne: booking._id } // Exclude current booking
         });
       } else {
-        // If no time specified, count all approved/booked bookings for this location
+        // If no time specified, count all approved/booked bookings for this parking lot name
         bookedCount = await Booking.countDocuments({
           $or: [
-            { status: 'booked', location: locationRegex },
-            { status: 'approved', location: locationRegex }
+            { status: 'booked', parkingLotName: parkingLotNameRegex },
+            { status: 'approved', parkingLotName: parkingLotNameRegex },
+            { status: 'booked', location: parkingLotNameRegex },
+            { status: 'approved', location: parkingLotNameRegex }
           ],
           _id: { $ne: booking._id }
         });
@@ -312,7 +319,7 @@ export const approveBooking = async (req, res) => {
       const availableSpots = totalSpots - bookedCount;
       
       console.log('📊 Spot availability check:', {
-        location: requestedLocation,
+        parkingLotName: requestedParkingLotName,
         totalSpots: totalSpots,
         bookedCount: bookedCount,
         availableSpots: availableSpots,
@@ -321,9 +328,9 @@ export const approveBooking = async (req, res) => {
       
       if (availableSpots <= 0) {
         return res.status(409).json({ 
-          message: `All ${totalSpots} spot(s) at "${requestedLocation}" are already booked. Do you want to add more spots?`,
+          message: `All ${totalSpots} spot(s) at "${requestedParkingLotName}" are already booked. Do you want to add more spots?`,
           code: 'NO_AVAILABLE_SPOTS',
-          location: requestedLocation,
+          parkingLotName: requestedParkingLotName,
           totalSpots: totalSpots,
           bookedSpots: bookedCount,
           suggestion: 'add_spots'
@@ -337,7 +344,7 @@ export const approveBooking = async (req, res) => {
       console.log('✅ Search query approved:', {
         bookingId: booking._id,
         user: booking.user.email,
-        location: booking.location,
+        parkingLotName: booking.parkingLotName || booking.location,
         availableSpots: availableSpots,
         totalSpots: totalSpots
       });
@@ -352,7 +359,7 @@ export const approveBooking = async (req, res) => {
             <p>Hi ${booking.user.name || ''},</p>
             <p>Your parking spot request has been approved by the admin.</p>
             <ul>
-              <li><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+              <li><strong>Parking Lot Name:</strong> ${booking.parkingLotName || booking.location || 'N/A'}</li>
               <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
               ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
               ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
@@ -418,7 +425,7 @@ export const approveBooking = async (req, res) => {
         <p>Your parking spot reservation has been approved and confirmed.</p>
         <ul>
           <li><strong>Spot:</strong> ${booking.parkingSpot.parkingLotName || booking.parkingSpot.parkinglotName || 'N/A'} - ${booking.parkingSpot.spotNum}</li>
-          <li><strong>Location:</strong> ${booking.parkingSpot.location}</li>
+          <li><strong>Parking Lot Name:</strong> ${booking.parkingSpot.parkingLotName || booking.parkingSpot.parkinglotName || 'N/A'}</li>
           <li><strong>From:</strong> ${start.toLocaleString()}</li>
           <li><strong>To:</strong> ${end.toLocaleString()}</li>
           <li><strong>Price:</strong> ৳${booking.price}</li>
@@ -486,13 +493,13 @@ export const rejectBooking = async (req, res) => {
             <h3 style="margin-top: 0;">Request Details:</h3>
             <ul style="list-style: none; padding: 0;">
               ${isSearchQuery 
-                ? `<li style="margin: 8px 0;"><strong>Location:</strong> ${booking.location || 'N/A'}</li>
+                ? `<li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingLotName || booking.location || 'N/A'}</li>
                    <li style="margin: 8px 0;"><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
                    ${booking.startTime ? `<li style="margin: 8px 0;"><strong>Start Time:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
                    ${booking.endTime ? `<li style="margin: 8px 0;"><strong>End Time:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
                    ${booking.date ? `<li style="margin: 8px 0;"><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</li>` : ''}`
                  : `<li style="margin: 8px 0;"><strong>Spot:</strong> ${(booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'N/A')} - ${booking.parkingSpot?.spotNum || 'N/A'}</li>
-                   <li style="margin: 8px 0;"><strong>Location:</strong> ${booking.parkingSpot?.location || 'N/A'}</li>
+                   <li style="margin: 8px 0;"><strong>Parking Lot Name:</strong> ${booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'N/A'}</li>
                    ${booking.startTime ? `<li style="margin: 8px 0;"><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
                    ${booking.endTime ? `<li style="margin: 8px 0;"><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}`
               }

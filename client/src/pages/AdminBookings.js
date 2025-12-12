@@ -161,7 +161,7 @@ const AdminBookings = () => {
                       User
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Location/Spot
+                      Parking Lot Name/Spot
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
                       Time/Date
@@ -218,7 +218,7 @@ const AdminBookings = () => {
                           {isSearchQuery ? (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                Parking Lot Name: {booking.parkingLotName || 'N/A'}
+                                Parking Lot Name: {booking.parkingLotName || booking.location || 'N/A'}
                               </div>
                               <div className="text-xs text-gray-500">
                                 Vehicle Type: {booking.vehicleType || 'N/A'}

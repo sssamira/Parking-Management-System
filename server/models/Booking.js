@@ -39,6 +39,11 @@ const bookingSchema = new mongoose.Schema({
     default: 0
   },
   // Search query details
+  parkingLotName: {
+    type: String,
+    trim: true
+  },
+  // Keep location for backward compatibility (deprecated, use parkingLotName)
   location: {
     type: String,
     trim: true

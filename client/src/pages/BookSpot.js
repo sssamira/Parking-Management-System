@@ -473,7 +473,7 @@ const BookSpot = () => {
                       <option value="Gulshan Lake Park">Gulshan Lake Park</option>
                     </optgroup>
                   </select>
-                  {/* Display hourly payment info when location is selected */}
+                  {/* Display hourly payment info when parking lot name is selected */}
                   {locationPrice && (
                     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       {locationPrice.loading ? (

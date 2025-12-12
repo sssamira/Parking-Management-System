@@ -29,7 +29,7 @@ const createSpotValidation = [
 		const fallback = req.body.area;
 		const normalized = (value || fallback || '').trim();
 		if (!normalized) {
-			throw new Error('location is required');
+			throw new Error('area is required');
 		}
 		req.body.location = normalized;
 		return true;
