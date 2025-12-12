@@ -17,71 +17,97 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    profileImage: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: [function () { return this.authProvider === 'local'; }, 'Please provide a password'],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // Don't return password by default
     },
     phone: {
       type: String,
-      required: [true, 'Please provide your phone number'],
+      required: [function () { return this.authProvider === 'local'; }, 'Please provide your phone number'],
       trim: true,
+      default: '',
     },
     
     // Driver Details
     driverLicense: {
       type: String,
-      required: [true, 'Please provide your driver license number'],
+      required: [function () { return this.authProvider === 'local'; }, 'Please provide your driver license number'],
       trim: true,
+      default: '',
     },
     address: {
       type: String,
-      required: [true, 'Please provide your address'],
+      required: [function () { return this.authProvider === 'local'; }, 'Please provide your address'],
       trim: true,
+      default: '',
     },
     
-    // Vehicle Details - Array of vehicles
-    vehicles: [
-      {
-        licensePlate: {
-          type: String,
-          required: [true, 'Please provide your vehicle license plate'],
-          uppercase: true,
-          trim: true,
+    // Vehicle Details - Array of vehicles (optional for social logins)
+    vehicles: {
+      type: [
+        {
+          licensePlate: {
+            type: String,
+            required: [true, 'Please provide your vehicle license plate'],
+            uppercase: true,
+            trim: true,
+          },
+          carType: {
+            type: String,
+            required: [true, 'Please provide your car type'],
+            enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'],
+            trim: true,
+          },
+          carModel: {
+            type: String,
+            required: [true, 'Please provide your car model'],
+            trim: true,
+          },
+          carColor: {
+            type: String,
+            required: [true, 'Please provide your car color'],
+            trim: true,
+          },
+          carYear: {
+            type: Number,
+            required: [true, 'Please provide your car year'],
+            min: [1900, 'Invalid car year'],
+            max: [new Date().getFullYear() + 1, 'Invalid car year'],
+          },
+          isActive: {
+            type: Boolean,
+            default: true,
+          },
+          addedAt: {
+            type: Date,
+            default: Date.now,
+          },
         },
-        carType: {
-          type: String,
-          required: [true, 'Please provide your car type'],
-          enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'],
-          trim: true,
-        },
-        carModel: {
-          type: String,
-          required: [true, 'Please provide your car model'],
-          trim: true,
-        },
-        carColor: {
-          type: String,
-          required: [true, 'Please provide your car color'],
-          trim: true,
-        },
-        carYear: {
-          type: Number,
-          required: [true, 'Please provide your car year'],
-          min: [1900, 'Invalid car year'],
-          max: [new Date().getFullYear() + 1, 'Invalid car year'],
-        },
-        isActive: {
-          type: Boolean,
-          default: true,
-        },
-        addedAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+      ],
+      default: [],
+    },
+    // Track last Google login payload to help debugging (optional)
+    lastGooglePayload: {
+      type: Object,
+      select: false,
+    },
     
     // Search Queries - Store booking search details
     searchQueries: [{
@@ -140,7 +166,7 @@ const userSchema = new mongoose.Schema(
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   // Only hash if password is modified and not already hashed
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
   

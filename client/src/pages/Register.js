@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
 
 const Register = () => {
@@ -18,10 +19,32 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showNumberInput, setShowNumberInput] = useState(false);
   const [numberOfVehicles, setNumberOfVehicles] = useState(1);
 
   const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'];
+
+  const finalizeRegistration = (payload) => {
+    if (payload.token) {
+      localStorage.setItem('token', payload.token);
+    }
+
+    if (payload.user) {
+      localStorage.setItem('user', JSON.stringify(payload.user));
+    } else {
+      const { token, message: responseMessage, ...userData } = payload;
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    setSuccess(true);
+    setErrors({});
+    window.dispatchEvent(new Event('localStorageChange'));
+
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 2000);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -161,23 +184,7 @@ const Register = () => {
       };
       
       const response = await api.post('/auth/register', formattedData);
-      
-      // Store token
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      
-      // Show success message
-      setSuccess(true);
-      setErrors({});
-      
-      // Dispatch custom event to notify App of registration (for same-window updates)
-      window.dispatchEvent(new Event('localStorageChange'));
-      
-      // Redirect to home or dashboard after showing success message
-      setTimeout(() => {
-        // Force navigation to homepage
-        window.location.href = '/';
-      }, 2000); // 2 second delay to show success message
+      finalizeRegistration(response.data);
     } catch (error) {
       console.error('Registration error:', error);
       console.error('Error details:', {
@@ -225,6 +232,34 @@ const Register = () => {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setGoogleLoading(true);
+      setErrors({});
+      setSuccess(false);
+
+      const credential = credentialResponse?.credential;
+      if (!credential) {
+        setErrors({ submit: 'Google sign-in failed. Please try again.' });
+        return;
+      }
+
+      const response = await api.post('/auth/google', { credential });
+      finalizeRegistration(response.data);
+    } catch (error) {
+      console.error('Google registration error:', error);
+      const message = error.response?.data?.message || error.message || 'Google sign-in failed. Please try again.';
+      setErrors({ submit: message });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleLoading(false);
+    setErrors({ submit: 'Google sign-in was cancelled or failed. Please try again.' });
+  };
+
   return (
     <div className="relative min-h-screen">
       {/* Fixed Background */}
@@ -251,6 +286,31 @@ const Register = () => {
             <p className="mt-2 text-center text-sm text-gray-600">
               Register with your vehicle and driver details
             </p>
+          </div>
+
+          <div className="mt-8 space-y-3">
+            <div className="flex flex-col items-center space-y-3">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text="signup_with"
+                width="320"
+              />
+              {googleLoading && (
+                <p className="text-sm text-gray-600">Creating your account with Google...</p>
+              )}
+              <p className="text-xs text-gray-500 text-center max-w-sm">
+                We will create an account using your Google profile. You can add driver and vehicle details after signing in.
+              </p>
+            </div>
+            <div className="relative pt-2">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or complete the registration form</span>
+              </div>
+            </div>
           </div>
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
 
 const Login = () => {
@@ -10,6 +11,28 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const finalizeLogin = (payload) => {
+    if (payload.token) {
+      localStorage.setItem('token', payload.token);
+    }
+
+    if (payload.user) {
+      localStorage.setItem('user', JSON.stringify(payload.user));
+    } else {
+      const { token, message: responseMessage, ...userData } = payload;
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    setSuccess(true);
+    setError('');
+    window.dispatchEvent(new Event('localStorageChange'));
+
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1500);
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -51,33 +74,7 @@ const Login = () => {
       };
       
       const response = await api.post('/auth/login', loginData);
-      
-      // Store token and user data
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-      }
-      
-      // Store user data
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      } else {
-        // Fallback: if user data is at root level
-        const { token, message, ...userData } = response.data;
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
-      
-      // Show success message
-      setSuccess(true);
-      setError('');
-      
-      // Dispatch custom event to notify App of login (for same-window updates)
-      window.dispatchEvent(new Event('localStorageChange'));
-      
-      // Redirect to home after showing success message
-      setTimeout(() => {
-        // Force navigation to homepage
-        window.location.href = '/';
-      }, 1500); // 1.5 second delay to show success message
+      finalizeLogin(response.data);
     } catch (error) {
       console.error('Login error:', error);
       console.error('Error response:', error.response?.data);
@@ -124,6 +121,34 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setGoogleLoading(true);
+      setError('');
+      setSuccess(false);
+
+      const credential = credentialResponse?.credential;
+      if (!credential) {
+        setError('Google sign-in failed. Please try again.');
+        return;
+      }
+
+      const response = await api.post('/auth/google', { credential });
+      finalizeLogin(response.data);
+    } catch (error) {
+      console.error('Google login error:', error);
+      const message = error.response?.data?.message || error.message || 'Google sign-in failed. Please try again.';
+      setError(message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleLoading(false);
+    setError('Google sign-in was cancelled or failed. Please try again.');
   };
 
   return (
@@ -209,6 +234,27 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              width="100%"
+              text="signin_with"
+            />
+          </div>
+          {googleLoading && (
+            <p className="text-center text-sm text-gray-600">Signing in with Google...</p>
+          )}
 
           <div className="text-center">
             <p className="text-sm text-gray-600">

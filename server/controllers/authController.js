@@ -1,12 +1,28 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
+};
+
+const getGoogleClient = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return null;
+  }
+  return new OAuth2Client(clientId, process.env.GOOGLE_CLIENT_SECRET);
+};
+let googleClient;
+const ensureGoogleClient = () => {
+  if (!googleClient && process.env.GOOGLE_CLIENT_ID) {
+    googleClient = getGoogleClient();
+  }
+  return googleClient;
 };
 
 // @desc    Register a new user
@@ -87,6 +103,9 @@ export const register = async (req, res) => {
         driverLicense: user.driverLicense,
         address: user.address,
         vehicles: user.vehicles,
+        authProvider: user.authProvider,
+        profileImage: user.profileImage,
+        role: user.role,
         token: generateToken(user._id),
         message: `Account created successfully! Your account with ${user.vehicles.length} vehicle(s) has been added to the database.`,
       });
@@ -292,6 +311,8 @@ export const login = async (req, res) => {
           address: user.address,
           vehicles: user.vehicles,
           role: user.role,
+          authProvider: user.authProvider,
+          profileImage: user.profileImage,
         },
         message: 'Login successful',
       });
@@ -346,11 +367,142 @@ export const getMe = async (req, res) => {
       address: user.address,
       vehicles: user.vehicles,
       role: user.role,
+      authProvider: user.authProvider,
+      profileImage: user.profileImage,
       createdAt: user.createdAt,
     });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Sign in/up with Google
+// @route   POST /api/auth/google
+// @access  Public
+export const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential is required' });
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('Google client ID is not configured');
+      return res.status(500).json({ message: 'Google auth is not configured on the server' });
+    }
+
+    const client = ensureGoogleClient();
+    if (!client) {
+      return res.status(500).json({ message: 'Google auth client could not be initialized' });
+    }
+
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyError) {
+      console.error('❌ Google credential verification failed:', verifyError);
+      return res.status(401).json({ message: 'Invalid Google credential' });
+    }
+
+    if (!payload) {
+      return res.status(401).json({ message: 'Invalid Google credential' });
+    }
+
+    const {
+      sub: googleId,
+      email,
+      name,
+      picture,
+      given_name: givenName,
+      family_name: familyName,
+    } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Google account does not have a verified email' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const displayName = name || `${givenName || ''} ${familyName || ''}`.trim() || 'Google User';
+
+    let user = await User.findOne({
+      $or: [
+        { googleId },
+        { email: normalizedEmail },
+      ],
+    }).select('+password');
+
+    const isNewUser = !user;
+
+    if (!user) {
+      user = await User.create({
+        name: displayName,
+        email: normalizedEmail,
+        authProvider: 'google',
+        googleId,
+        profileImage: picture || '',
+        phone: '',
+        driverLicense: '',
+        address: '',
+        vehicles: [],
+        lastGooglePayload: payload,
+      });
+    } else {
+      let shouldSave = false;
+
+      if (!user.googleId && googleId) {
+        user.googleId = googleId;
+        shouldSave = true;
+      }
+
+      if (!user.profileImage && picture) {
+        user.profileImage = picture;
+        shouldSave = true;
+      }
+
+      if (user.authProvider !== 'google' && !user.password) {
+        user.authProvider = 'google';
+        shouldSave = true;
+      }
+
+      user.lastGooglePayload = payload;
+      if (shouldSave) {
+        await user.save();
+      } else {
+        await user.updateOne({ lastGooglePayload: payload });
+      }
+    }
+
+    const token = generateToken(user._id);
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        driverLicense: user.driverLicense,
+        address: user.address,
+        vehicles: user.vehicles,
+        role: user.role,
+        authProvider: user.authProvider,
+        profileImage: user.profileImage,
+      },
+      isNewUser,
+      message: isNewUser ? 'Google account created successfully' : 'Login successful',
+    });
+  } catch (error) {
+    console.error('❌ Google auth error:', error);
+    res.status(500).json({
+      message: 'Server error during Google authentication',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 };
 

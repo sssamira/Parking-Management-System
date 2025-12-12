@@ -139,6 +139,11 @@ Or connect your GitHub repository to Vercel for automatic deployments.
 - `MONGODB_URI` - MongoDB connection string
 - `JWT_SECRET` - Secret key for JWT tokens
 - `JWT_EXPIRE` - JWT token expiration time
+- `GOOGLE_CLIENT_ID` - OAuth client ID from Google Cloud Console (Web application)
+- `GOOGLE_CLIENT_SECRET` - OAuth client secret from Google Cloud Console
+
+### Client (.env)
+- `REACT_APP_GOOGLE_CLIENT_ID` - Same OAuth client ID used above, exposed to the browser
 
 ## License
 

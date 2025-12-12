@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getMe } from '../controllers/authController.js';
+import { register, login, getMe, googleAuth } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 import { body } from 'express-validator';
@@ -50,6 +50,7 @@ const loginValidation = [
 // Routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
+router.post('/google', googleAuth);
 router.get('/me', protect, getMe);
 
 export default router;
