@@ -30,7 +30,7 @@
 </head>
 <body>
 
-    <h2>Pay 120 BDT</h2>
+    <h2 id="title">Pay</h2>
 
     <form id="payment-form">
         <div id="payment-element"><!-- Stripe Element will load here --></div>
@@ -42,9 +42,16 @@
         const stripe = Stripe("pk_test_51SafMe4uUluNRMATfTKUEl5MUCJbXurr08rEKZpW15EsvxgvDWTvWH9bK5QRKnejGUjff8DIoy71Gwf6LuIpxWrq00c372hQah"); // pk_test_xxx
 
         async function initialize() {
-            const response = await fetch("http://localhost:4242/create-payment-intent", {
+            const params = new URLSearchParams(window.location.search);
+            const amountParam = params.get('amount');
+            const displayAmount = params.get('displayAmount');
+            const amount = amountParam ? Number(amountParam) : 12000; // minor units
+            document.getElementById('title').textContent = `Pay ${displayAmount ? displayAmount : (amount/100).toFixed(2)} BDT`;
+
+            const response = await fetch("/api/payments/create-payment-intent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amount, currency: 'bdt' })
             });
 
             const { clientSecret } = await response.json();
@@ -63,7 +70,7 @@
                 const { error } = await stripe.confirmPayment({
                     elements,
                     confirmParams: {
-                        return_url: "http://localhost:5500/success.html",
+                        return_url: window.location.origin + '/paymentPage.html',
                     },
                 });
 

@@ -279,6 +279,31 @@ const BookSpot = () => {
     setError('');
   };
 
+  const handlePaymentClick = () => {
+    try {
+      const start = bookingData.startTime || filters.startTime;
+      const end = bookingData.endTime || filters.endTime;
+      const spot = selectedSpot;
+      if (!spot || !start || !end) {
+        window.location.href = '/paymentPage.html';
+        return;
+      }
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const durationMs = endDate.getTime() - startDate.getTime();
+      if (durationMs <= 0) {
+        return;
+      }
+      const durationHours = Math.max(durationMs / (1000 * 60 * 60), 0.5);
+      const price = Number((durationHours * (spot.pricePerHour || 0)).toFixed(2));
+      const amountMinor = Math.round(price * 100);
+      const displayAmount = price.toFixed(2);
+      window.location.href = `/paymentPage.html?amount=${amountMinor}&displayAmount=${encodeURIComponent(displayAmount)}`;
+    } catch (e) {
+      window.location.href = '/paymentPage.html';
+    }
+  };
+
   const handleBookSpot = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -603,7 +628,7 @@ const BookSpot = () => {
 
                 <button
                   type="button"
-                  onClick={() => { window.location.href = '/paymentPage.html'; }}
+                  onClick={handlePaymentClick}
                   className="w-full py-2 px-4 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold"
                 >
                   Payment

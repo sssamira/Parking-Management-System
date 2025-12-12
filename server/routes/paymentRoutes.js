@@ -1,36 +1,41 @@
 import express from "express";
 import Stripe from "stripe";
-import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const router = express.Router();
 
-const stripe = new Stripe("sk_test_51SafMe4uUluNRMATQsV9RaT4e8147AoLf45c4z5JGmCZDVZqm7rfQ9pWAJbqG6UL9ioFNxFRfaZNrd17Ubk7U9Kw00CCUwMU2P"); // sk_test_xxx
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+let stripe = null;
+if (stripeSecret) {
+  stripe = new Stripe(stripeSecret);
+}
+console.log('Stripe configured:', Boolean(stripeSecret));
 
-// Create Payment Intent
-app.post("/create-payment-intent", async (req, res) => {
-    try {
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: 12000,     // 120 SEK → amount in öre
-            currency: "BDT",
-            automatic_payment_methods: { enabled: true },
-        });
-
-        res.send({
-            clientSecret: paymentIntent.client_secret,
-        });
-    } catch (err) {
-        res.status(400).send({ error: err.message });
+router.post("/create-payment-intent", async (req, res) => {
+  try {
+    if (!stripeSecret) {
+      return res.status(500).json({ message: "Stripe secret key not configured" });
     }
-});
 
-app.get("/payment-status", async (req, res) => {
-    const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
-    res.send({
-        status: session.status,
-        customer_email: session.customer_details.email
+    const { amount, currency } = req.body || {};
+    const minorAmount = Number(amount);
+    const curr = (currency || "bdt").toLowerCase();
+
+    if (!minorAmount || minorAmount <= 0 || !Number.isFinite(minorAmount)) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(minorAmount),
+      currency: curr,
+      automatic_payment_methods: { enabled: true },
     });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
-app.listen(4242, () => console.log("Server running on port 4242"));
+export default router;
