@@ -39,7 +39,7 @@ const bookingSchema = new mongoose.Schema({
     default: 0
   },
   // Search query details
-  parkingLotName: {
+  location: {
     type: String,
     trim: true
   },

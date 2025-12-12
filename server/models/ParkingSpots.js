@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
 const parkingSpotSchema = new mongoose.Schema({
-  spotNum: { 
+  spotNum: {    // A-12
     type: String, 
     required: true, 
     trim: true 
   }, 
-  area: { 
+  parkingLotName: {  // Bashundhara city, Aarong etc
     type: String, 
     required: true, 
     trim: true 
@@ -15,7 +15,7 @@ const parkingSpotSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
-  parkingLotName: { 
+  location: {     // dhanmondi, gulshan, banani etc. So if someone search for a parking spot in dhanmondi that will be filtered by this field.
     type: String, 
     required: true 
   }, 
@@ -35,6 +35,6 @@ const parkingSpotSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-parkingSpotSchema.index({ area: 1, spotNum: 1 }, { unique: true });
+parkingSpotSchema.index({ parkingLotName: 1, spotNum: 1 }, { unique: true });
 
 export default mongoose.model('ParkingSpot', parkingSpotSchema);

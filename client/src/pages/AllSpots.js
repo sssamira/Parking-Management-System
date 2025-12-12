@@ -10,9 +10,14 @@ const AllSpots = () => {
     const [success, setSuccess] = useState('');
     const [user, setUser] = useState(null);
     const [vehicles, setVehicles] = useState([]);
+    const [parkingLots, setParkingLots] = useState([]);
+    const [parkingLotSearch, setParkingLotSearch] = useState('');
+    const [activeParkingLot, setActiveParkingLot] = useState('');
+    const [activeLotLocation, setActiveLotLocation] = useState('');
 
     // Search filters
     const [filters, setFilters] = useState({
+        parkingLotName: '',
         location: '',
         vehicleType: '',
         minPrice: '',
@@ -20,6 +25,8 @@ const AllSpots = () => {
         startTime: '',
         endTime: '',
     });
+
+    const activeLocationLabel = activeLotLocation || 'Unspecified location';
 
     // Booking form state
     const [selectedSpot, setSelectedSpot] = useState(null);
@@ -54,10 +61,20 @@ const AllSpots = () => {
 
             // Initial load of all spots
             fetchAllSpots();
+            fetchParkingLots();
         } catch (e) {
             console.error('Error parsing user data:', e);
         }
     }, []);
+
+    const fetchParkingLots = async () => {
+        try {
+            const response = await api.get('/parking/lots');
+            setParkingLots(response.data?.lots || []);
+        } catch (err) {
+            console.error('Error fetching parking lot summary:', err);
+        }
+    };
 
     const fetchAllSpots = async () => {
         setLoading(true);
@@ -81,21 +98,23 @@ const AllSpots = () => {
         });
     };
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
+    const runSearch = async (activeFilters) => {
         setLoading(true);
         setError('');
+        setSuccess('');
+        setSelectedSpot(null);
 
         try {
             const params = new URLSearchParams();
-            if (filters.location) params.append('location', filters.location);
-            if (filters.vehicleType) params.append('vehicleType', filters.vehicleType);
-            if (filters.minPrice) params.append('minPrice', filters.minPrice);
-            if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+            if (activeFilters.parkingLotName) params.append('parkingLotName', activeFilters.parkingLotName);
+            if (activeFilters.location) params.append('location', activeFilters.location);
+            if (activeFilters.vehicleType) params.append('vehicleType', activeFilters.vehicleType);
+            if (activeFilters.minPrice) params.append('minPrice', activeFilters.minPrice);
+            if (activeFilters.maxPrice) params.append('maxPrice', activeFilters.maxPrice);
 
-            if (filters.startTime && filters.endTime) {
-                params.append('startTime', new Date(filters.startTime).toISOString());
-                params.append('endTime', new Date(filters.endTime).toISOString());
+            if (activeFilters.startTime && activeFilters.endTime) {
+                params.append('startTime', new Date(activeFilters.startTime).toISOString());
+                params.append('endTime', new Date(activeFilters.endTime).toISOString());
             }
 
             const response = await api.get(`/parking?${params.toString()}`);
@@ -104,6 +123,8 @@ const AllSpots = () => {
 
             if (results.length === 0) {
                 setError('No spots found matching your criteria.');
+            } else {
+                setError('');
             }
         } catch (err) {
             console.error('Search error:', err);
@@ -112,6 +133,60 @@ const AllSpots = () => {
             setLoading(false);
         }
     };
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        await runSearch(filters);
+    };
+
+    const handleParkingLotSelect = (lot) => {
+        const locationFilter = lot.location || '';
+        const updatedFilters = {
+            ...filters,
+            parkingLotName: lot.parkingLotName,
+            location: locationFilter,
+        };
+        setActiveParkingLot(lot.parkingLotName);
+        setActiveLotLocation(locationFilter);
+        setFilters(updatedFilters);
+        setSelectedSpot(null);
+        setError('');
+        setSuccess('');
+        runSearch(updatedFilters);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleClearParkingLot = () => {
+        if (!activeParkingLot) {
+            return;
+        }
+        const updatedFilters = {
+            ...filters,
+            parkingLotName: '',
+            location: '',
+        };
+        setActiveParkingLot('');
+        setActiveLotLocation('');
+        setFilters(updatedFilters);
+        setSelectedSpot(null);
+        setError('');
+        setSuccess('');
+        runSearch(updatedFilters);
+    };
+
+    const filteredParkingLots = parkingLots.filter((lot) => {
+        const keyword = parkingLotSearch.trim().toLowerCase();
+        if (!keyword) {
+            return true;
+        }
+
+        const locationValue = (lot.location || '').toLowerCase();
+        const matchesLocation = locationValue.includes(keyword);
+
+        const matchesName = (lot.parkingLotName || '').toLowerCase().includes(keyword);
+
+        return matchesLocation || matchesName;
+    });
 
     const handleSelectSpot = (spot) => {
         if (!localStorage.getItem('token')) {
@@ -173,7 +248,9 @@ const AllSpots = () => {
                 setSuccess('✅ Booking successful! Check your email for confirmation.');
                 setSelectedSpot(null);
                 // Refresh list
-                handleSearch(e);
+                setTimeout(() => {
+                    runSearch(filters);
+                }, 0);
             }
         } catch (err) {
             console.error('Booking error:', err);
@@ -197,23 +274,114 @@ const AllSpots = () => {
                 {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg">{error}</div>}
                 {success && <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-lg">{success}</div>}
 
+                {parkingLots.length > 0 && (
+                    <div className="mb-8">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-indigo-900">Available Parking Lots</h2>
+                                <p className="text-gray-600 mt-1">Select a parking lot to quickly view its available spots.</p>
+                            </div>
+                            <p className="text-sm text-gray-500">Showing {filteredParkingLots.length} of {parkingLots.length} parking lot{parkingLots.length === 1 ? '' : 's'}</p>
+                        </div>
+                        <div className="mt-4 flex flex-col md:flex-row md:items-center md:gap-4">
+                            <input
+                                type="text"
+                                value={parkingLotSearch}
+                                onChange={(e) => setParkingLotSearch(e.target.value)}
+                                placeholder="Search by location keyword (e.g., Gulshan, Dhanmondi)"
+                                className="w-full md:w-96 px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <div className="flex flex-wrap items-center gap-3 mt-3 md:mt-0">
+                                {parkingLotSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setParkingLotSearch('')}
+                                        className="text-sm text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        Clear search
+                                    </button>
+                                )}
+                                {activeParkingLot && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearParkingLot}
+                                        className="text-sm text-rose-600 hover:text-rose-800"
+                                    >
+                                        Clear selected parking lot
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {activeParkingLot && (
+                            <div className="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 text-sm flex items-center justify-between gap-3">
+                                <span>Selected parking lot: <strong>{activeParkingLot} - {activeLocationLabel}</strong></span>
+                                <button
+                                    type="button"
+                                    onClick={handleClearParkingLot}
+                                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
+
+                        {parkingLotSearch && filteredParkingLots.length === 0 && (
+                            <p className="mt-4 text-sm text-gray-500">No parking lots found for "{parkingLotSearch}".</p>
+                        )}
+
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredParkingLots.map((lot) => {
+                                const locationLabel = lot.location || 'Unspecified location';
+                                const lotKey = `${lot.parkingLotName || 'Unknown'}__${locationLabel}`;
+                                const isActive = activeParkingLot === lot.parkingLotName && activeLotLocation === lot.location;
+                                return (
+                                    <button
+                                        key={lotKey}
+                                        type="button"
+                                        onClick={() => handleParkingLotSelect(lot)}
+                                        className={`text-left bg-white p-5 rounded-xl shadow-sm border ${isActive ? 'border-indigo-400 shadow-md ring-1 ring-indigo-200' : 'border-indigo-100'} hover:border-indigo-300 hover:shadow-md transition`}
+                                        aria-pressed={isActive}
+                                    >
+                                        <h3 className="text-lg font-semibold text-indigo-900">{lot.parkingLotName}</h3>
+                                        <p className="text-sm text-gray-600 mt-1">{lot.totalSpots} spot{lot.totalSpots === 1 ? '' : 's'} available</p>
+                                        <p className="text-xs text-gray-500 mt-2">{locationLabel}</p>
+                                        {lot.vehicleTypes && lot.vehicleTypes.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-3">
+                                                {lot.vehicleTypes.map((type) => (
+                                                    <span key={type} className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-full">
+                                                        {type}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar Filters */}
                     <div className="lg:col-span-1">
                         <div className="bg-white p-6 rounded-xl shadow-sm sticky top-8">
                             <h2 className="text-lg font-semibold mb-4">Filter Spots</h2>
                             <form onSubmit={handleSearch} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                    <input
-                                        type="text"
-                                        name="location"
-                                        value={filters.location}
-                                        onChange={handleFilterChange}
-                                        placeholder="e.g. Bashundhara"
-                                        className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
-                                </div>
+                                {activeParkingLot && (
+                                    <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-700 flex items-center justify-between gap-3">
+                                        <span>
+                                            Filtering by: <strong>{activeParkingLot} - {activeLocationLabel}</strong>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearParkingLot}
+                                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
                                     <select
@@ -289,8 +457,8 @@ const AllSpots = () => {
                                     <button onClick={() => setSelectedSpot(null)} className="text-gray-400 hover:text-gray-600">✕</button>
                                 </div>
 
-                                <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm">
-                                    <p><strong>Location:</strong> {selectedSpot.location} ({selectedSpot.parkinglotName})</p>
+                                    <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm">
+                                        <p><strong>Location:</strong> {selectedSpot.location} ({selectedSpot.parkingLotName || selectedSpot.parkinglotName})</p>
                                     <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
                                 </div>
 
@@ -372,7 +540,7 @@ const AllSpots = () => {
                                 <div key={spot._id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h3 className="font-bold text-lg text-gray-800">{spot.parkinglotName}</h3>
+                                            <h3 className="font-bold text-lg text-gray-800">{spot.parkingLotName || spot.parkinglotName || 'Unnamed Parking Lot'}</h3>
                                             <p className="text-gray-500 text-sm">{spot.location}</p>
                                             <div className="flex gap-2 mt-2">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{spot.vehicleType}</span>
