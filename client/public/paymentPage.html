@@ -70,7 +70,7 @@
                 const { error } = await stripe.confirmPayment({
                     elements,
                     confirmParams: {
-                        return_url: window.location.origin + '/paymentPage.html',
+                        return_url: window.location.origin + '/book-spot',
                     },
                 });
 
@@ -96,7 +96,8 @@
 
             switch (paymentIntent.status) {
                 case "succeeded":
-                    showMessage("Payment succeeded!");
+                    showMessage("Payment succeeded! Redirecting...");
+                    setTimeout(() => { window.location.href = '/book-spot'; }, 500);
                     break;
                 case "processing":
                     showMessage("Your payment is processing.");
