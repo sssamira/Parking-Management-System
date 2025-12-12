@@ -67,7 +67,25 @@ const bookingSchema = new mongoose.Schema({
   licenseNumber: {
     type: String,
     trim: true
+  },
+  
+  //Asif's
+
+  paidUntil: { 
+    type: Date,
+    required: false
+  },
+  fineIssued: {
+    type: Boolean,
+    default: false
+  },
+  fineId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Fine',
+    default: null
   }
+
+
 }, { timestamps: true });
 
 export default mongoose.model('Booking', bookingSchema);

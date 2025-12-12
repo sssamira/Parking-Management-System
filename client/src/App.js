@@ -11,6 +11,8 @@ import AllSpots from './pages/AllSpots';
 import AdminSpots from './pages/AdminSpots';
 import AdminBookings from './pages/AdminBookings';
 import AdminFeedback from './pages/AdminFeedback';
+import AdminFines from './pages/AdminFines';
+import UserFines from './pages/UserFines';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -109,6 +111,8 @@ function App() {
             <Route path="/admin/spots" element={<AdminSpots />} />
             <Route path="/admin/bookings" element={<AdminBookings />} />
             <Route path="/admin/feedback" element={<AdminFeedback />} />
+            <Route path="/admin/fines" element={<AdminFines />} />
+            <Route path="/my-fines" element={<UserFines />} />
           </Routes>
         </div>
       </div>

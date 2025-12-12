@@ -379,6 +379,7 @@ const Homepage = () => {
                     Search and view all available parking spots across different lots. 
                   </p>
                   </Link>
+              
             </>
           )}
 
@@ -413,6 +414,8 @@ const Homepage = () => {
               </p>
             </Link>
           )}
+
+
           {/* Admin Only - Admin Feedback Card */}
           {user && user.role === 'admin' && (
             <Link
@@ -427,7 +430,27 @@ const Homepage = () => {
                 View and manage all user feedback. Resolve feedback and monitor user suggestions.
               </p>
             </Link>
+            
           )}
+
+
+          {/* Admin Only - Admin Fines Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/fines"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(220,38,38,0.35)] p-8 border border-red-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(220,38,38,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-red-100 text-red-600 text-3xl mb-4">
+                ⚖️
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Fines Management</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Monitor and manage parking fines for overtime vehicles. Issue fines, mark as paid, or waive fines.
+              </p>
+            </Link>
+)}
+
+
         </div>
       </div>
     </div>

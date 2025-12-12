@@ -178,6 +178,7 @@ import authRoutes from './routes/authRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import parkingRoutes from './routes/parkingRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import fineRoutes from './routes/fineRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import searchQueryRoutes from './routes/searchQueryRoutes.js';
 
@@ -214,6 +215,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/parking', parkingRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/fines', fineRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/search-queries', searchQueryRoutes);
 
