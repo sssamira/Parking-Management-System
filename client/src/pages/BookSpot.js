@@ -603,6 +603,7 @@ const BookSpot = () => {
 
                 <button
                   type="button"
+                  onClick={() => { window.location.href = '/paymentPage.html'; }}
                   className="w-full py-2 px-4 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold"
                 >
                   Payment
