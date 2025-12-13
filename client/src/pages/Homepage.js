@@ -50,11 +50,13 @@ const Homepage = () => {
       const bookingsResponse = await api.get('/bookings');
       const bookings = bookingsResponse.data?.bookings || [];
 
-      // Create notifications for approved/booked bookings - just show email sent message
+      // Create notifications for approved/booked bookings - only show if email was actually sent
       // Only show for bookings that were recently updated (within last hour) to indicate email was just sent
       const bookingNotifications = bookings
         .filter(booking => {
           if (booking.status !== 'booked' && booking.status !== 'approved') return false;
+          // Only show if email was actually sent
+          if (!booking.emailSent) return false;
           // Only show if booking was recently updated (within last hour)
           const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -74,11 +76,13 @@ const Homepage = () => {
           };
         });
 
-      // Add notifications for rejected bookings - just show email sent message
+      // Add notifications for rejected bookings - only show if email was actually sent
       // Only show for bookings that were recently rejected (within last hour)
       const rejectedNotifications = bookings
         .filter(booking => {
           if (booking.status !== 'rejected') return false;
+          // Only show if email was actually sent
+          if (!booking.emailSent) return false;
           // Only show if booking was recently updated (within last hour)
           const updatedAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date(booking.createdAt);
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);

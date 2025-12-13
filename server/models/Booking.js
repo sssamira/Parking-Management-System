@@ -67,6 +67,16 @@ const bookingSchema = new mongoose.Schema({
   licenseNumber: {
     type: String,
     trim: true
+  },
+  emailSent: {
+    type: Boolean,
+    default: false
+  },
+  emailSentAt: {
+    type: Date
+  },
+  emailError: {
+    type: String
   }
 }, { timestamps: true });
 

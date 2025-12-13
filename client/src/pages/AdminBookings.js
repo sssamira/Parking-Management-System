@@ -65,7 +65,12 @@ const AdminBookings = () => {
       // Immediately remove from local state for instant UI update
       setBookings(prevBookings => prevBookings.filter(booking => booking._id !== bookingId));
       
-      window.alert('Booking approved successfully! User will receive confirmation email.');
+      // Show success message (email is optional)
+      if (response.data?.emailSent) {
+        window.alert('Booking approved successfully! Confirmation email has been sent to the user.');
+      } else {
+        window.alert('Booking approved successfully!');
+      }
       
       // Then refresh from server to ensure consistency
       await fetchPendingBookings();
@@ -103,10 +108,17 @@ const AdminBookings = () => {
 
     try {
       setProcessing(bookingId);
-      await api.patch(`/bookings/${bookingId}/reject`, { reason });
+      const response = await api.patch(`/bookings/${bookingId}/reject`, { reason });
       
       // Immediately remove from local state for instant UI update
       setBookings(prevBookings => prevBookings.filter(booking => booking._id !== bookingId));
+      
+      // Show success message (email is optional)
+      if (response.data?.emailSent) {
+        window.alert('Booking rejected successfully! Rejection email has been sent to the user.');
+      } else {
+        window.alert('Booking rejected successfully!');
+      }
       
       // Then refresh from server to ensure consistency
       await fetchPendingBookings();

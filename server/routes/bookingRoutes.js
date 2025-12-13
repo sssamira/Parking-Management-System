@@ -5,7 +5,8 @@ import {
   getUserBookings, 
   getPendingBookings, 
   approveBooking, 
-  rejectBooking 
+  rejectBooking,
+  testEmail
 } from '../controllers/bookingController.js';
 import { protect, admin } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
@@ -27,6 +28,7 @@ router.get('/', protect, getUserBookings);
 
 // Admin routes
 router.get('/admin/pending', protect, admin, getPendingBookings);
+router.post('/test-email', protect, admin, testEmail);
 router.patch('/:id/approve', protect, admin, approveBooking);
 router.patch('/:id/reject', protect, admin, rejectBooking);
 

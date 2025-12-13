@@ -81,7 +81,6 @@ const connectDB = async (retries = 3) => {
 
   // If currently connecting, wait a bit
   if (mongoose.connection.readyState === 2) {
-    console.log('⏳ MongoDB connection in progress, waiting...');
     return false;
   }
 
@@ -91,9 +90,9 @@ const connectDB = async (retries = 3) => {
       const cleanURI = MONGODB_URI.trim();
       
       if (i > 0) {
-        console.log(`🔄 Retrying MongoDB connection (attempt ${i + 1}/${retries})...`);
-      } else {
-        console.log('🔄 Attempting to connect to MongoDB...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔄 Retrying MongoDB connection (attempt ${i + 1}/${retries})...`);
+        }
       }
       
       // Only connect if not already connected
@@ -105,9 +104,11 @@ const connectDB = async (retries = 3) => {
         await mongoose.connect(cleanURI, mongooseOptions);
       }
       
-      console.log('✅ MongoDB Connected Successfully');
-      console.log(`📦 Database: ${mongoose.connection.name}`);
-      console.log(`🔗 Connection URI: ${cleanURI.replace(/\/\/.*@/, '//***@')}`); // Hide credentials
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ MongoDB Connected: ${mongoose.connection.name}`);
+      } else {
+        console.log('✅ MongoDB Connected');
+      }
       
       return true;
     } catch (error) {
@@ -201,10 +202,6 @@ app.use('/api', (req, res, next) => {
     });
   }
   
-  // If connecting (state 2), allow the request but log a warning
-  if (readyState === 2 && !isAllowedPath) {
-    console.log(`⏳ Database is connecting. Processing request to: ${req.path}`);
-  }
   
   next();
 });
@@ -243,13 +240,9 @@ const startServer = async () => {
   
   // Start the server regardless of MongoDB connection status
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
-    console.log(`🔗 Frontend should connect to: http://localhost:${PORT}/api`);
-    
-    // Check MongoDB status
-    const dbStatus = mongoose.connection.readyState === 1 ? '✅ Connected' : '⚠️  Not Connected';
-    console.log(`📦 MongoDB Status: ${dbStatus}`);
+      console.log(`🚀 Server running on port ${PORT}`);
+      const dbStatus = mongoose.connection.readyState === 1 ? '✅ Connected' : '⚠️  Not Connected';
+      console.log(`📦 MongoDB: ${dbStatus}`);
   });
 
   // Handle port already in use error

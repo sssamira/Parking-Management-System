@@ -91,9 +91,9 @@ export const register = async (req, res) => {
     });
 
     if (user) {
-      console.log('✅ User created successfully:', user.email);
-      console.log('✅ Vehicles added:', user.vehicles.length);
-      console.log('✅ User saved to database with ID:', user._id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ User created:', user.email);
+      }
       
       res.status(201).json({
         _id: user._id,
@@ -177,7 +177,6 @@ export const login = async (req, res) => {
         normalizedEmail === adminEmail && 
         normalizedPassword === adminPassword) {
       
-      console.log('✅ Admin login successful');
       
       // Create virtual admin user object
       const adminUser = {
@@ -219,15 +218,11 @@ export const login = async (req, res) => {
 
     if (!user) {
       console.log('❌ User not found:', normalizedEmail);
-      console.log('🔍 Searching for users with similar emails...');
       // Debug: Check if there are any users at all
       const allUsers = await User.find({}).select('email');
-      console.log('🔍 All users in database:', allUsers.map(u => u.email));
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    console.log('✅ User found:', user.email);
-    console.log('🔍 User ID:', user._id);
     
     // Check if password field exists
     if (!user.password) {
@@ -235,16 +230,9 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     
-    console.log('🔍 Password hash exists:', user.password ? 'Yes' : 'No');
-    console.log('🔍 Password hash length:', user.password ? user.password.length : 0);
-    console.log('🔍 Password hash starts with:', user.password ? user.password.substring(0, 10) : 'N/A');
     
     // Check if password is hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
     const isPasswordHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$'));
-    console.log('🔍 Password is hashed:', isPasswordHashed);
-    
-    console.log('🔍 Checking password...');
-    console.log('🔍 Entered password length:', enteredPassword.length);
     
     // Use normalizedPassword that was already declared above
     // Check password
@@ -253,23 +241,18 @@ export const login = async (req, res) => {
     try {
       if (isPasswordHashed) {
         // Password is hashed, use bcrypt comparison
-        console.log('🔍 Using bcrypt comparison (password is hashed)');
         
         // Try the model method first
         isPasswordMatch = await user.matchPassword(normalizedPassword);
-        console.log('🔍 Password match (model method):', isPasswordMatch);
         
         // If model method fails, try direct bcrypt
         if (!isPasswordMatch) {
-          console.log('🔍 Trying direct bcrypt comparison...');
           isPasswordMatch = await bcrypt.compare(normalizedPassword, user.password);
-          console.log('🔍 Password match (direct bcrypt):', isPasswordMatch);
         }
       } else {
         // Password is NOT hashed (stored as plain text) - security issue but handle it
         console.log('⚠️ WARNING: Password stored as plain text!');
         isPasswordMatch = normalizedPassword === user.password.trim();
-        console.log('🔍 Plain text password match:', isPasswordMatch);
         
         // If matches, hash it for future use (async, non-blocking)
         if (isPasswordMatch) {
@@ -278,7 +261,6 @@ export const login = async (req, res) => {
               const salt = await bcrypt.genSalt(10);
               const hashedPassword = await bcrypt.hash(normalizedPassword, salt);
               await User.updateOne({ _id: user._id }, { password: hashedPassword });
-              console.log('✅ Password has been hashed and saved');
             } catch (hashError) {
               console.error('⚠️ Error hashing password:', hashError.message);
             }
@@ -298,7 +280,6 @@ export const login = async (req, res) => {
     }
     
     if (isPasswordMatch) {
-      console.log('✅ Login successful for:', user.email);
       const token = generateToken(user._id);
       res.json({
         token,
@@ -318,9 +299,6 @@ export const login = async (req, res) => {
       });
     } else {
       console.log('❌ Invalid password for:', user.email);
-      console.log('🔍 Password provided length:', normalizedPassword.length);
-      console.log('🔍 Password hash in DB starts with:', user.password.substring(0, 20));
-      console.log('🔍 Password is hashed:', isPasswordHashed);
       
       // Provide more helpful error message
       res.status(401).json({ 
