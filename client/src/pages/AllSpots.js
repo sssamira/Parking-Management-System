@@ -7,6 +7,17 @@ const formatDateTimeLocal = (date) => {
     return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
 };
 
+// Helper function to get current date/time in datetime-local format
+const getCurrentDateTimeLocal = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const AllSpots = () => {
     const navigate = useNavigate();
     const [spots, setSpots] = useState([]);
@@ -472,6 +483,7 @@ const AllSpots = () => {
                                         name="startTime"
                                         value={filters.startTime}
                                         onChange={handleFilterChange}
+                                        min={getCurrentDateTimeLocal()}
                                         className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
@@ -482,6 +494,7 @@ const AllSpots = () => {
                                         name="endTime"
                                         value={filters.endTime}
                                         onChange={handleFilterChange}
+                                        min={filters.startTime || getCurrentDateTimeLocal()}
                                         className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>

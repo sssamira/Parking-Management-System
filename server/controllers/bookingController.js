@@ -201,9 +201,17 @@ export const createBooking = async (req, res) => {
 
     const start = new Date(startTime);
     const end = new Date(endTime);
+    const now = new Date();
+    
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return res.status(400).json({ message: 'Invalid startTime or endTime' });
     }
+    
+    // Prevent booking past dates
+    if (start < now) {
+      return res.status(400).json({ message: 'Start time cannot be in the past. Please select today or a future date.' });
+    }
+    
     if (start >= end) {
       return res.status(400).json({ message: 'endTime must be after startTime' });
     }

@@ -37,6 +37,26 @@ const BookSpot = () => {
     }
   });
 
+  // Helper function to get current date/time in datetime-local format
+  const getCurrentDateTimeLocal = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Helper function to get current date in date format
+  const getCurrentDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
     // Get user data
     try {
@@ -571,6 +591,7 @@ const BookSpot = () => {
                     name="date"
                     value={filters.date}
                     onChange={handleFilterChange}
+                    min={getCurrentDate()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -584,6 +605,7 @@ const BookSpot = () => {
                     name="startTime"
                     value={filters.startTime}
                     onChange={handleFilterChange}
+                    min={getCurrentDateTimeLocal()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -597,6 +619,7 @@ const BookSpot = () => {
                     name="endTime"
                     value={filters.endTime}
                     onChange={handleFilterChange}
+                    min={filters.startTime || getCurrentDateTimeLocal()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -636,6 +659,7 @@ const BookSpot = () => {
                       value={bookingData.startTime}
                       onChange={handleBookingChange}
                       required
+                      min={getCurrentDateTimeLocal()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
@@ -650,6 +674,7 @@ const BookSpot = () => {
                       value={bookingData.endTime}
                       onChange={handleBookingChange}
                       required
+                      min={bookingData.startTime || getCurrentDateTimeLocal()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
