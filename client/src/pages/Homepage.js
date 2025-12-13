@@ -448,8 +448,23 @@ const Homepage = () => {
                 Monitor and manage parking fines for overtime vehicles. Issue fines, mark as paid, or waive fines.
               </p>
             </Link>
-)}
+          )}
 
+          {/* Admin Only - Chat Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/chat"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(16,185,129,0.35)] p-8 border border-emerald-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(16,185,129,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 text-3xl mb-4">
+                💬
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Chat</h3>
+              <p className="text-gray-600 leading-relaxed">
+                View user threads and reply to messages.
+              </p>
+            </Link>
+          )}
 
         </div>
       </div>
