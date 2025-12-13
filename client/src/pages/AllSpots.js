@@ -18,6 +18,77 @@ const getCurrentDateTimeLocal = () => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+// Helper function to check if a datetime-local value is for today
+const isToday = (dateTimeLocal) => {
+    if (!dateTimeLocal) return false;
+    const selectedDate = new Date(dateTimeLocal);
+    const today = new Date();
+    return (
+        selectedDate.getFullYear() === today.getFullYear() &&
+        selectedDate.getMonth() === today.getMonth() &&
+        selectedDate.getDate() === today.getDate()
+    );
+};
+
+// Helper function to get min datetime for startTime
+// If the selected date is today, use current time; otherwise use start of selected day
+const getMinStartTime = (selectedDateTime) => {
+    const now = new Date();
+    const currentDateTimeLocal = getCurrentDateTimeLocal();
+    
+    // Always default to current time if no selection
+    if (!selectedDateTime) {
+        return currentDateTimeLocal;
+    }
+    
+    try {
+        const selectedDate = new Date(selectedDateTime);
+        const today = new Date();
+        
+        // Reset time parts for date-only comparison
+        const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        // If selected date is today, use current time (prevents past hours)
+        if (selectedDateOnly.getTime() === todayOnly.getTime()) {
+            return currentDateTimeLocal;
+        }
+        
+        // If selected date is in the future, use start of that day
+        if (selectedDateOnly > todayOnly) {
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00`;
+        }
+        
+        // If somehow in the past, use current time
+        return currentDateTimeLocal;
+    } catch (e) {
+        // If parsing fails, use current time
+        return currentDateTimeLocal;
+    }
+};
+
+// Helper function to get min datetime for endTime
+const getMinEndTime = (startTime) => {
+    if (!startTime) {
+        return getCurrentDateTimeLocal();
+    }
+    
+    const now = new Date();
+    const startDate = new Date(startTime);
+    const currentDateTimeLocal = getCurrentDateTimeLocal();
+    
+    // If startTime is today and in the past, use current time
+    if (isToday(startTime) && startDate < now) {
+        return currentDateTimeLocal;
+    }
+    
+    // Otherwise, use the startTime (or current time if startTime is in the past)
+    return startDate > now ? startTime : currentDateTimeLocal;
+};
+
 const AllSpots = () => {
     const navigate = useNavigate();
     const [spots, setSpots] = useState([]);
@@ -109,9 +180,22 @@ const AllSpots = () => {
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
+        
+        // Validate datetime inputs to prevent past times for today
+        let validatedValue = value;
+        if ((name === 'startTime' || name === 'endTime') && value) {
+            const selectedDate = new Date(value);
+            const now = new Date();
+            
+            // If selected date/time is today and in the past, adjust to current time
+            if (isToday(value) && selectedDate < now) {
+                validatedValue = getCurrentDateTimeLocal();
+            }
+        }
+        
         setFilters({
             ...filters,
-            [name]: value,
+            [name]: validatedValue,
         });
     };
 
@@ -196,8 +280,9 @@ const AllSpots = () => {
         }
     };
 
-    const nowLocal = formatDateTimeLocal(new Date(Date.now() + 60000));
-    const minEndDateTime = bookingData.startTime && bookingData.startTime > nowLocal ? bookingData.startTime : nowLocal;
+    // Use helper functions for dynamic min values
+    const minStartTime = getMinStartTime(bookingData.startTime);
+    const minEndTime = getMinEndTime(bookingData.startTime);
 
     const filteredParkingLots = parkingLots.filter((lot) => {
         const keyword = parkingLotSearch.trim().toLowerCase();
@@ -232,22 +317,38 @@ const AllSpots = () => {
 
     const handleBookingChange = (e) => {
         const { name, value } = e.target;
+        
+        // Validate datetime inputs to prevent past times for today
+        let validatedValue = value;
+        if ((name === 'startTime' || name === 'endTime') && value) {
+            const selectedDate = new Date(value);
+            const now = new Date();
+            
+            // If selected date/time is today and in the past, adjust to current time
+            if (isToday(value) && selectedDate < now) {
+                validatedValue = getCurrentDateTimeLocal();
+                // Show a brief message to user
+                setError('Selected time was in the past. Adjusted to current time.');
+                setTimeout(() => setError(''), 3000);
+            }
+        }
 
         if (name === 'licensePlate' || name === 'carType') {
             setBookingData((prev) => ({
                 ...prev,
                 vehicle: {
                     ...prev.vehicle,
-                    [name]: value,
+                    [name]: validatedValue,
                 },
             }));
         } else if (name === 'startTime') {
             setBookingData((prev) => {
                 const updated = {
                     ...prev,
-                    startTime: value,
+                    startTime: validatedValue,
                 };
-                if (prev.endTime && prev.endTime <= value) {
+                // Reset endTime if it's now invalid
+                if (prev.endTime && prev.endTime <= validatedValue) {
                     updated.endTime = '';
                 }
                 return updated;
@@ -255,12 +356,12 @@ const AllSpots = () => {
         } else if (name === 'endTime') {
             setBookingData((prev) => ({
                 ...prev,
-                endTime: value,
+                endTime: validatedValue,
             }));
         } else {
             setBookingData((prev) => ({
                 ...prev,
-                [name]: value,
+                [name]: validatedValue,
             }));
         }
     };
@@ -483,7 +584,18 @@ const AllSpots = () => {
                                         name="startTime"
                                         value={filters.startTime}
                                         onChange={handleFilterChange}
-                                        min={getCurrentDateTimeLocal()}
+                                        onBlur={(e) => {
+                                            // Validate on blur as backup
+                                            if (e.target.value && isToday(e.target.value)) {
+                                                const selectedDate = new Date(e.target.value);
+                                                const now = new Date();
+                                                if (selectedDate < now) {
+                                                    const corrected = getCurrentDateTimeLocal();
+                                                    setFilters(prev => ({ ...prev, startTime: corrected }));
+                                                }
+                                            }
+                                        }}
+                                        min={getMinStartTime(filters.startTime)}
                                         className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
@@ -494,7 +606,18 @@ const AllSpots = () => {
                                         name="endTime"
                                         value={filters.endTime}
                                         onChange={handleFilterChange}
-                                        min={filters.startTime || getCurrentDateTimeLocal()}
+                                        onBlur={(e) => {
+                                            // Validate on blur as backup
+                                            if (e.target.value && isToday(e.target.value)) {
+                                                const selectedDate = new Date(e.target.value);
+                                                const now = new Date();
+                                                if (selectedDate < now) {
+                                                    const corrected = getCurrentDateTimeLocal();
+                                                    setFilters(prev => ({ ...prev, endTime: corrected }));
+                                                }
+                                            }
+                                        }}
+                                        min={getMinEndTime(filters.startTime)}
                                         className="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
@@ -543,7 +666,7 @@ const AllSpots = () => {
                                                 value={bookingData.startTime}
                                                 onChange={handleBookingChange}
                                                 required
-                                                min={nowLocal}
+                                                min={minStartTime}
                                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             />
                                         </div>
@@ -555,7 +678,7 @@ const AllSpots = () => {
                                                 value={bookingData.endTime}
                                                 onChange={handleBookingChange}
                                                 required
-                                                min={minEndDateTime}
+                                                min={minEndTime}
                                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             />
                                         </div>

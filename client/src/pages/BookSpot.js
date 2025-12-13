@@ -57,6 +57,77 @@ const BookSpot = () => {
     return `${year}-${month}-${day}`;
   };
 
+  // Helper function to check if a datetime-local value is for today
+  const isToday = (dateTimeLocal) => {
+    if (!dateTimeLocal) return false;
+    const selectedDate = new Date(dateTimeLocal);
+    const today = new Date();
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    );
+  };
+
+  // Helper function to get min datetime for startTime
+  // If the selected date is today, use current time; otherwise use start of selected day
+  const getMinStartTime = (selectedDateTime) => {
+    const now = new Date();
+    const currentDateTimeLocal = getCurrentDateTimeLocal();
+    
+    // Always default to current time if no selection
+    if (!selectedDateTime) {
+      return currentDateTimeLocal;
+    }
+    
+    try {
+      const selectedDate = new Date(selectedDateTime);
+      const today = new Date();
+      
+      // Reset time parts for date-only comparison
+      const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      // If selected date is today, use current time (prevents past hours)
+      if (selectedDateOnly.getTime() === todayOnly.getTime()) {
+        return currentDateTimeLocal;
+      }
+      
+      // If selected date is in the future, use start of that day
+      if (selectedDateOnly > todayOnly) {
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}T00:00`;
+      }
+      
+      // If somehow in the past, use current time
+      return currentDateTimeLocal;
+    } catch (e) {
+      // If parsing fails, use current time
+      return currentDateTimeLocal;
+    }
+  };
+
+  // Helper function to get min datetime for endTime
+  const getMinEndTime = (startTime) => {
+    if (!startTime) {
+      return getCurrentDateTimeLocal();
+    }
+    
+    const now = new Date();
+    const startDate = new Date(startTime);
+    const currentDateTimeLocal = getCurrentDateTimeLocal();
+    
+    // If startTime is today and in the past, use current time
+    if (isToday(startTime) && startDate < now) {
+      return currentDateTimeLocal;
+    }
+    
+    // Otherwise, use the startTime (or current time if startTime is in the past)
+    return startDate > now ? startTime : currentDateTimeLocal;
+  };
+
   useEffect(() => {
     // Get user data
     try {
@@ -82,9 +153,22 @@ const BookSpot = () => {
 
   const handleFilterChange = async (e) => {
     const { name, value } = e.target;
+    
+    // Validate datetime inputs to prevent past times for today
+    let validatedValue = value;
+    if ((name === 'startTime' || name === 'endTime') && value) {
+      const selectedDate = new Date(value);
+      const now = new Date();
+      
+      // If selected date/time is today and in the past, adjust to current time
+      if (isToday(value) && selectedDate < now) {
+        validatedValue = getCurrentDateTimeLocal();
+      }
+    }
+    
     setFilters({
       ...filters,
-      [name]: value,
+      [name]: validatedValue,
     });
 
     // If parking lot name changed, fetch price for that parking lot
@@ -164,18 +248,43 @@ const BookSpot = () => {
   };
 
   const handleBookingChange = (e) => {
-    if (e.target.name === 'licensePlate' || e.target.name === 'carType') {
+    const { name, value } = e.target;
+    
+    // Validate datetime inputs to prevent past times for today
+    let validatedValue = value;
+    if ((name === 'startTime' || name === 'endTime') && value) {
+      const selectedDate = new Date(value);
+      const now = new Date();
+      
+      // If selected date/time is today and in the past, adjust to current time
+      if (isToday(value) && selectedDate < now) {
+        validatedValue = getCurrentDateTimeLocal();
+        // Show a brief message to user
+        setError('Selected time was in the past. Adjusted to current time.');
+        setTimeout(() => setError(''), 3000);
+      }
+    }
+    
+    if (name === 'licensePlate' || name === 'carType') {
       setBookingData({
         ...bookingData,
         vehicle: {
           ...bookingData.vehicle,
-          [e.target.name]: e.target.value,
+          [name]: validatedValue,
         },
+      });
+    } else if (name === 'startTime') {
+      // When startTime changes, ensure endTime is still valid
+      setBookingData({
+        ...bookingData,
+        startTime: validatedValue,
+        // Reset endTime if it's now invalid
+        endTime: bookingData.endTime && new Date(bookingData.endTime) <= new Date(validatedValue) ? '' : bookingData.endTime,
       });
     } else {
       setBookingData({
         ...bookingData,
-        [e.target.name]: e.target.value,
+        [name]: validatedValue,
       });
     }
   };
@@ -605,7 +714,18 @@ const BookSpot = () => {
                     name="startTime"
                     value={filters.startTime}
                     onChange={handleFilterChange}
-                    min={getCurrentDateTimeLocal()}
+                    onBlur={(e) => {
+                      // Validate on blur as backup
+                      if (e.target.value && isToday(e.target.value)) {
+                        const selectedDate = new Date(e.target.value);
+                        const now = new Date();
+                        if (selectedDate < now) {
+                          const corrected = getCurrentDateTimeLocal();
+                          setFilters(prev => ({ ...prev, startTime: corrected }));
+                        }
+                      }
+                    }}
+                    min={getMinStartTime(filters.startTime)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -619,7 +739,18 @@ const BookSpot = () => {
                     name="endTime"
                     value={filters.endTime}
                     onChange={handleFilterChange}
-                    min={filters.startTime || getCurrentDateTimeLocal()}
+                    onBlur={(e) => {
+                      // Validate on blur as backup
+                      if (e.target.value && isToday(e.target.value)) {
+                        const selectedDate = new Date(e.target.value);
+                        const now = new Date();
+                        if (selectedDate < now) {
+                          const corrected = getCurrentDateTimeLocal();
+                          setFilters(prev => ({ ...prev, endTime: corrected }));
+                        }
+                      }
+                    }}
+                    min={getMinEndTime(filters.startTime)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -658,8 +789,21 @@ const BookSpot = () => {
                       name="startTime"
                       value={bookingData.startTime}
                       onChange={handleBookingChange}
+                      onBlur={(e) => {
+                        // Validate on blur as backup
+                        if (e.target.value && isToday(e.target.value)) {
+                          const selectedDate = new Date(e.target.value);
+                          const now = new Date();
+                          if (selectedDate < now) {
+                            const corrected = getCurrentDateTimeLocal();
+                            setBookingData(prev => ({ ...prev, startTime: corrected }));
+                            setError('Selected time was in the past. Adjusted to current time.');
+                            setTimeout(() => setError(''), 3000);
+                          }
+                        }
+                      }}
                       required
-                      min={getCurrentDateTimeLocal()}
+                      min={getMinStartTime(bookingData.startTime)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
@@ -673,8 +817,21 @@ const BookSpot = () => {
                       name="endTime"
                       value={bookingData.endTime}
                       onChange={handleBookingChange}
+                      onBlur={(e) => {
+                        // Validate on blur as backup
+                        if (e.target.value && isToday(e.target.value)) {
+                          const selectedDate = new Date(e.target.value);
+                          const now = new Date();
+                          if (selectedDate < now) {
+                            const corrected = getCurrentDateTimeLocal();
+                            setBookingData(prev => ({ ...prev, endTime: corrected }));
+                            setError('Selected time was in the past. Adjusted to current time.');
+                            setTimeout(() => setError(''), 3000);
+                          }
+                        }
+                      }}
                       required
-                      min={bookingData.startTime || getCurrentDateTimeLocal()}
+                      min={getMinEndTime(bookingData.startTime)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
