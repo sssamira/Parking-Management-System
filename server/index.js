@@ -285,4 +285,7 @@ const startServer = async () => {
 // Start the application
 startServer();
 
+// Start scheduled jobs
+// import checkBookingExpirations from './jobs/checkBookingExpirations.js';
+// checkBookingExpirations();
 
