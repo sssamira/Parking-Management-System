@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+
+const formatDateTimeLocal = (date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+};
 
 const AllSpots = () => {
     const navigate = useNavigate();
@@ -14,6 +19,7 @@ const AllSpots = () => {
     const [parkingLotSearch, setParkingLotSearch] = useState('');
     const [activeParkingLot, setActiveParkingLot] = useState('');
     const [activeLotLocation, setActiveLotLocation] = useState('');
+    const resultsRef = useRef(null);
 
     // Search filters
     const [filters, setFilters] = useState({
@@ -139,7 +145,7 @@ const AllSpots = () => {
         await runSearch(filters);
     };
 
-    const handleParkingLotSelect = (lot) => {
+    const handleParkingLotSelect = async (lot) => {
         const locationFilter = lot.location || '';
         const updatedFilters = {
             ...filters,
@@ -152,11 +158,13 @@ const AllSpots = () => {
         setSelectedSpot(null);
         setError('');
         setSuccess('');
-        runSearch(updatedFilters);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        await runSearch(updatedFilters);
+        if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     };
 
-    const handleClearParkingLot = () => {
+    const handleClearParkingLot = async () => {
         if (!activeParkingLot) {
             return;
         }
@@ -171,8 +179,14 @@ const AllSpots = () => {
         setSelectedSpot(null);
         setError('');
         setSuccess('');
-        runSearch(updatedFilters);
+        await runSearch(updatedFilters);
+        if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     };
+
+    const nowLocal = formatDateTimeLocal(new Date(Date.now() + 60000));
+    const minEndDateTime = bookingData.startTime && bookingData.startTime > nowLocal ? bookingData.startTime : nowLocal;
 
     const filteredParkingLots = parkingLots.filter((lot) => {
         const keyword = parkingLotSearch.trim().toLowerCase();
@@ -195,32 +209,48 @@ const AllSpots = () => {
             return;
         }
         setSelectedSpot(spot);
-        setBookingData({
-            ...bookingData,
+        setBookingData((prev) => ({
+            ...prev,
             parkingSpotId: spot._id,
-            startTime: filters.startTime || bookingData.startTime,
-            endTime: filters.endTime || bookingData.endTime,
-        });
+            startTime: filters.startTime || prev.startTime,
+            endTime: filters.endTime || prev.endTime,
+        }));
         setError('');
         setSuccess('');
-        // Scroll to booking form
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleBookingChange = (e) => {
-        if (e.target.name === 'licensePlate' || e.target.name === 'carType') {
-            setBookingData({
-                ...bookingData,
+        const { name, value } = e.target;
+
+        if (name === 'licensePlate' || name === 'carType') {
+            setBookingData((prev) => ({
+                ...prev,
                 vehicle: {
-                    ...bookingData.vehicle,
-                    [e.target.name]: e.target.value,
+                    ...prev.vehicle,
+                    [name]: value,
                 },
+            }));
+        } else if (name === 'startTime') {
+            setBookingData((prev) => {
+                const updated = {
+                    ...prev,
+                    startTime: value,
+                };
+                if (prev.endTime && prev.endTime <= value) {
+                    updated.endTime = '';
+                }
+                return updated;
             });
+        } else if (name === 'endTime') {
+            setBookingData((prev) => ({
+                ...prev,
+                endTime: value,
+            }));
         } else {
-            setBookingData({
-                ...bookingData,
-                [e.target.name]: e.target.value,
-            });
+            setBookingData((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
         }
     };
 
@@ -236,11 +266,27 @@ const AllSpots = () => {
             return;
         }
 
+        const startDate = new Date(bookingData.startTime);
+        const endDate = new Date(bookingData.endTime);
+        const now = new Date();
+
+        if (Number.isNaN(startDate.getTime()) || startDate < now) {
+            setError('Start time must be in the future');
+            setLoading(false);
+            return;
+        }
+
+        if (Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+            setError('End time must be after the start time');
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await api.post('/bookings', {
                 parkingSpotId: bookingData.parkingSpotId,
-                startTime: new Date(bookingData.startTime).toISOString(),
-                endTime: new Date(bookingData.endTime).toISOString(),
+                startTime: startDate.toISOString(),
+                endTime: endDate.toISOString(),
                 vehicle: bookingData.vehicle,
             });
 
@@ -448,90 +494,116 @@ const AllSpots = () => {
                     </div>
 
                     {/* Results & Booking */}
-                    <div className="lg:col-span-3">
-                        {/* Booking Modal / Area */}
+                    <div className="lg:col-span-3" ref={resultsRef}>
+                        {/* Floating Booking Modal */}
                         {selectedSpot && (
-                            <div className="bg-white p-6 rounded-xl shadow-lg mb-8 border-2 border-indigo-100">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-xl font-bold text-indigo-900">Book Spot: {selectedSpot.spotNum}</h3>
-                                    <button onClick={() => setSelectedSpot(null)} className="text-gray-400 hover:text-gray-600">✕</button>
-                                </div>
-
-                                    <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm">
-                                        <p><strong>Parking Lot Name:</strong> {selectedSpot.parkingLotName || selectedSpot.parkinglotName || 'N/A'}</p>
-                                        <p><strong>Area:</strong> {selectedSpot.location || 'N/A'}</p>
-                                    <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
-                                </div>
-
-                                <form onSubmit={handleBookSpot} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="startTime"
-                                            value={bookingData.startTime}
-                                            onChange={handleBookingChange}
-                                            required
-                                            className="w-full border-gray-300 rounded-lg"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="endTime"
-                                            value={bookingData.endTime}
-                                            onChange={handleBookingChange}
-                                            required
-                                            className="w-full border-gray-300 rounded-lg"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">License Plate</label>
-                                        {vehicles.length > 0 ? (
-                                            <select
-                                                name="licensePlate"
-                                                value={bookingData.vehicle.licensePlate}
-                                                onChange={handleBookingChange}
-                                                required
-                                                className="w-full border-gray-300 rounded-lg"
-                                            >
-                                                <option value="">Select Vehicle</option>
-                                                {vehicles.map((v, i) => (
-                                                    <option key={i} value={v.licensePlate}>{v.licensePlate}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                name="licensePlate"
-                                                value={bookingData.vehicle.licensePlate}
-                                                onChange={handleBookingChange}
-                                                placeholder="License Plate"
-                                                required
-                                                className="w-full border-gray-300 rounded-lg"
-                                            />
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
-                                        <select
-                                            name="carType"
-                                            value={bookingData.vehicle.carType}
-                                            onChange={handleBookingChange}
-                                            required
-                                            className="w-full border-gray-300 rounded-lg"
+                            <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+                                <div
+                                    className="absolute inset-0 bg-black bg-opacity-40"
+                                    onClick={() => setSelectedSpot(null)}
+                                ></div>
+                                <div className="relative z-50 w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-indigo-100">
+                                    <div className="flex justify-between items-start p-6 border-b border-indigo-50">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-widest text-indigo-500 font-semibold">Booking Spot</p>
+                                            <h3 className="text-2xl font-bold text-indigo-900 mt-1">Spot #{selectedSpot.spotNum}</h3>
+                                        </div>
+                                        <button
+                                            onClick={() => setSelectedSpot(null)}
+                                            className="text-gray-400 hover:text-gray-600 transition"
+                                            aria-label="Close booking form"
                                         >
-                                            <option value="">Select Type</option>
-                                            {['Sedan', 'SUV', 'Bike', 'Truck'].map(t => <option key={t} value={t}>{t}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <button type="submit" disabled={loading} className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-lg shadow-md">
-                                            {loading ? 'Processing...' : 'Confirm Booking'}
+                                            ✕
                                         </button>
                                     </div>
-                                </form>
+                                    <div className="px-6 pt-4 pb-2 bg-indigo-50/70 text-sm text-indigo-900">
+                                        <p><strong>Parking Lot:</strong> {selectedSpot.parkingLotName || selectedSpot.parkinglotName || 'N/A'}</p>
+                                        <p><strong>Area:</strong> {selectedSpot.location || 'N/A'}</p>
+                                        <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
+                                    </div>
+                                    <form onSubmit={handleBookSpot} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="startTime"
+                                                value={bookingData.startTime}
+                                                onChange={handleBookingChange}
+                                                required
+                                                min={nowLocal}
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="endTime"
+                                                value={bookingData.endTime}
+                                                onChange={handleBookingChange}
+                                                required
+                                                min={minEndDateTime}
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">License Plate</label>
+                                            {vehicles.length > 0 ? (
+                                                <select
+                                                    name="licensePlate"
+                                                    value={bookingData.vehicle.licensePlate}
+                                                    onChange={handleBookingChange}
+                                                    required
+                                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="">Select Vehicle</option>
+                                                    {vehicles.map((v, i) => (
+                                                        <option key={i} value={v.licensePlate}>{v.licensePlate}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="licensePlate"
+                                                    value={bookingData.vehicle.licensePlate}
+                                                    onChange={handleBookingChange}
+                                                    placeholder="License Plate"
+                                                    required
+                                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+                                            <select
+                                                name="carType"
+                                                value={bookingData.vehicle.carType}
+                                                onChange={handleBookingChange}
+                                                required
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            >
+                                                <option value="">Select Type</option>
+                                                {['Sedan', 'SUV', 'Bike', 'Truck'].map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="md:col-span-2 flex flex-col sm:flex-row gap-3 justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedSpot(null)}
+                                                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="flex-1 sm:flex-none px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-60"
+                                            >
+                                                {loading ? 'Processing...' : 'Confirm Booking'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         )}
 

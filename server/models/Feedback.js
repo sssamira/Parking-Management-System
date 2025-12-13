@@ -28,14 +28,26 @@ const feedbackSchema = new mongoose.Schema({
     },
     default: 'Experience'
   },
+  // Keep existing field for backward compatibility
   isResolved: {
     type: Boolean,
     default: false
+  },
+  // Add status field for more granular control
+  status: {
+    type: String,
+    enum: ['pending', 'in-progress', 'resolved', 'rejected'],
+    default: 'pending'
   },
   resolvedAt: Date,
   resolvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  adminResponse: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Admin response cannot exceed 500 characters']
   }
 }, {
   timestamps: true,
@@ -46,7 +58,7 @@ const feedbackSchema = new mongoose.Schema({
 // Index for better query performance
 feedbackSchema.index({ user: 1, createdAt: -1 });
 feedbackSchema.index({ category: 1, rating: -1 });
-feedbackSchema.index({ isResolved: 1, createdAt: -1 });
+feedbackSchema.index({ status: 1, createdAt: -1 });
 
 // Virtual for formatted created date
 feedbackSchema.virtual('formattedDate').get(function() {
@@ -55,6 +67,19 @@ feedbackSchema.virtual('formattedDate').get(function() {
     month: 'long',
     day: 'numeric'
   });
+});
+
+// Keep isResolved in sync with status
+feedbackSchema.pre('save', function(next) {
+  if (this.status === 'resolved') {
+    this.isResolved = true;
+    if (!this.resolvedAt) {
+      this.resolvedAt = new Date();
+    }
+  } else {
+    this.isResolved = false;
+  }
+  next();
 });
 
 const Feedback = mongoose.model('Feedback', feedbackSchema);

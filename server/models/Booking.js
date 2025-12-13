@@ -77,7 +77,22 @@ const bookingSchema = new mongoose.Schema({
   },
   emailError: {
     type: String
+  },
+  paidUntil: { 
+    type: Date,
+    required: false
+  },
+  fineIssued: {
+    type: Boolean,
+    default: false
+  },
+  fineId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Fine',
+    default: null
   }
+
+
 }, { timestamps: true });
 
 export default mongoose.model('Booking', bookingSchema);

@@ -334,6 +334,19 @@ const Homepage = () => {
               </Link>
 
               <Link
+                to="/chat"
+                className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(99,102,241,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(99,102,241,0.45)] transition"
+              >
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 text-3xl mb-4">
+                  💬
+                </div>
+                <h3 className="text-xl font-semibold text-indigo-900 mb-2">Chat with Admin</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Ask questions or get help directly from an admin.
+                </p>
+              </Link>
+
+              <Link
                 to="/book-spot"
                 className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(99,102,241,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(99,102,241,0.45)] transition"
               >
@@ -352,11 +365,24 @@ const Homepage = () => {
               >
                 <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 text-3xl mb-4">
                   💬
+                  
                 </div>
                 <h3 className="text-xl font-semibold text-indigo-900 mb-2">Feedback</h3>
                 <p className="text-gray-600 leading-relaxed">
                   Share your thoughts and suggestions. Help us improve the parking management experience.
                 </p>
+              </Link>
+              <Link
+                to="/my-feedback"
+                className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(168,85,247,0.35)] p-8 border border-purple-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(168,85,247,0.45)] transition"
+                >
+                  <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-purple-100 text-purple-600 text-3xl mb-4">
+                  📋
+                  </div>
+                  <h3 className="text-xl font-semibold text-indigo-900 mb-2">My Feedback</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    View all feedback you've submitted. Check the status of your suggestions and complaints.
+                  </p>
               </Link>
               <Link
                   to="/all-spots"
@@ -370,6 +396,7 @@ const Homepage = () => {
                     Search and view all available parking spots across different lots. 
                   </p>
                   </Link>
+              
             </>
           )}
 
@@ -404,6 +431,58 @@ const Homepage = () => {
               </p>
             </Link>
           )}
+
+
+          {/* Admin Only - Admin Feedback Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/feedback"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(139,92,246,0.35)] p-8 border border-purple-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(139,92,246,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-purple-100 text-purple-600 text-3xl mb-4">
+                📊
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Feedback Dashboard</h3>
+              <p className="text-gray-600 leading-relaxed">
+                View and manage all user feedback. Resolve feedback and monitor user suggestions.
+              </p>
+            </Link>
+            
+          )}
+
+
+          {/* Admin Only - Admin Fines Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/fines"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(220,38,38,0.35)] p-8 border border-red-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(220,38,38,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-red-100 text-red-600 text-3xl mb-4">
+                ⚖️
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Fines Management</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Monitor and manage parking fines for overtime vehicles. Issue fines, mark as paid, or waive fines.
+              </p>
+            </Link>
+          )}
+
+          {/* Admin Only - Chat Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/chat"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(16,185,129,0.35)] p-8 border border-emerald-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(16,185,129,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 text-3xl mb-4">
+                💬
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Chat</h3>
+              <p className="text-gray-600 leading-relaxed">
+                View user threads and reply to messages.
+              </p>
+            </Link>
+          )}
+
         </div>
       </div>
     </div>

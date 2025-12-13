@@ -10,6 +10,11 @@ import BookSpot from './pages/BookSpot';
 import AllSpots from './pages/AllSpots';
 import AdminSpots from './pages/AdminSpots';
 import AdminBookings from './pages/AdminBookings';
+import AdminFeedback from './pages/AdminFeedback';
+import AdminFines from './pages/AdminFines';
+import UserFines from './pages/UserFines';
+import Chat from './pages/Chat';
+import AdminChat from './pages/AdminChat';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -107,6 +112,11 @@ function App() {
             <Route path="/my-feedback" element={<MyFeedback />} />
             <Route path="/admin/spots" element={<AdminSpots />} />
             <Route path="/admin/bookings" element={<AdminBookings />} />
+            <Route path="/admin/feedback" element={<AdminFeedback />} />
+            <Route path="/admin/fines" element={<AdminFines />} />
+            <Route path="/my-fines" element={<UserFines />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/admin/chat" element={<AdminChat />} />
           </Routes>
         </div>
       </div>
