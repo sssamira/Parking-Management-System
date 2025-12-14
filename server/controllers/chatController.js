@@ -78,7 +78,6 @@ export const getThreads = async (req, res) => {
     return res.status(500).json({ message: 'Server error fetching threads' });
   }
 };
-
 export const markRead = async (req, res) => {
   try {
     const isAdmin = req.user?.role === 'admin';
