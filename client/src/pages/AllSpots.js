@@ -655,7 +655,10 @@ const AllSpots = () => {
                                     <div className="px-6 pt-4 pb-2 bg-indigo-50/70 text-sm text-indigo-900">
                                         <p><strong>Parking Lot:</strong> {selectedSpot.parkingLotName || selectedSpot.parkinglotName || 'N/A'}</p>
                                         <p><strong>Area:</strong> {selectedSpot.location || 'N/A'}</p>
-                                        <p><strong>Price:</strong> ৳{selectedSpot.pricePerHour}/hr</p>
+                                        <p><strong>Price:</strong> ৳{selectedSpot.computedPricePerHour ?? selectedSpot.pricePerHour}/hr</p>
+                                        {selectedSpot.surgeApplied && (
+                                            <p className="text-xs text-rose-700 font-medium">Rush hour pricing applied (+{selectedSpot.surgePercent}%)</p>
+                                        )}
                                     </div>
                                     <form onSubmit={handleBookSpot} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
@@ -753,7 +756,10 @@ const AllSpots = () => {
                                             <p className="text-gray-500 text-sm">Area: {spot.location || 'N/A'}</p>
                                             <div className="flex gap-2 mt-2">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{spot.vehicleType}</span>
-                                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">৳{spot.pricePerHour}/hr</span>
+                                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">৳{(spot.computedPricePerHour ?? spot.pricePerHour)}/hr</span>
+                                                {spot.surgeApplied && (
+                                                    <span className="px-2 py-1 bg-rose-100 text-rose-800 text-xs rounded-full">Rush +{spot.surgePercent}%</span>
+                                                )}
                                                 <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Floor {spot.floor}</span>
                                             </div>
                                         </div>
