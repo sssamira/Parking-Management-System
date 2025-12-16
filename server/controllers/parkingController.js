@@ -1,6 +1,24 @@
 import ParkingSpot from '../models/ParkingSpots.js';
 import Booking from '../models/Booking.js';
 
+const getSurgeMultiplier = (startTime, endTime) => {
+  const p = Number(process.env.SURGE_PERCENT || 20);
+  const windows = (process.env.SURGE_HOURS || '08:00-10:00,17:00-19:00').split(',').map(w=>w.split('-'));
+  const st = new Date(startTime);
+  const en = new Date(endTime);
+  if (isNaN(st) || isNaN(en) || en <= st) return 1;
+  const hasOverlap = windows.some(([a,b])=>{
+    const [ah,am] = a.split(':').map(Number);
+    const [bh,bm] = b.split(':').map(Number);
+    const s = new Date(st);
+    const e = new Date(st);
+    s.setHours(ah,am||0,0,0);
+    e.setHours(bh,bm||0,0,0);
+    return st < e && en > s;
+  });
+  return hasOverlap ? 1 + p/100 : 1;
+};
+
 export const getAvailableSpots = async (req, res) => {
   try {
     const {
@@ -56,7 +74,16 @@ export const getAvailableSpots = async (req, res) => {
 
     const availableSpots = allSpots.filter((spot) => !bookedSpotIds.includes(spot._id.toString()));
 
-    res.json({ availableSpots, count: availableSpots.length });
+    const mult = getSurgeMultiplier(startTime, endTime);
+    const percent = Math.round((mult - 1) * 100);
+    const availableSpotsWithPrice = availableSpots.map((s) => ({
+      ...s.toObject(),
+      computedPricePerHour: Number(((s.pricePerHour || 0) * mult).toFixed(2)),
+      surgeApplied: mult > 1,
+      surgePercent: mult > 1 ? percent : 0,
+    }));
+
+    res.json({ availableSpots: availableSpotsWithPrice, count: availableSpotsWithPrice.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error', error: err.message });
