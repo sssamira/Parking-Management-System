@@ -181,19 +181,25 @@ const BookSpot = () => {
       });
 
       try {
-        const response = await api.get(`/parking?parkingLotName=${encodeURIComponent(value)}`);
+        const params = new URLSearchParams();
+        params.append('parkingLotName', value);
+        if (filters.startTime && filters.endTime) {
+          params.append('startTime', new Date(filters.startTime).toISOString());
+          params.append('endTime', new Date(filters.endTime).toISOString());
+        }
+        const response = await api.get(`/parking?${params.toString()}`);
 
-        // Check both availableSpots and spots in response
         const spots = response.data?.availableSpots || response.data?.spots || [];
 
         if (spots.length > 0) {
-          // Calculate average price
-          const prices = spots.map(spot => spot.pricePerHour || 0).filter(p => p > 0);
+          const prices = spots.map(spot => (spot.computedPricePerHour ?? spot.pricePerHour) || 0).filter(p => p > 0);
 
           if (prices.length > 0) {
             const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
+            const surgeApplied = spots.some(s => (s.computedPricePerHour ?? s.pricePerHour) !== s.pricePerHour);
+            const surgePercent = surgeApplied ? (spots.find(s => (s.computedPricePerHour ?? s.pricePerHour) !== s.pricePerHour)?.surgePercent ?? null) : null;
 
             setLocationPrice({
               location: value,
@@ -201,6 +207,8 @@ const BookSpot = () => {
               min: minPrice,
               max: maxPrice,
               hasRange: minPrice !== maxPrice,
+              surgeApplied,
+              surgePercent,
               loading: false
             });
           } else {
@@ -626,6 +634,9 @@ const BookSpot = () => {
                           💰 Hourly payment is ৳{locationPrice.hasRange
                             ? `${locationPrice.min} - ৳${locationPrice.max}`
                             : locationPrice.average} for <span className="font-semibold">{locationPrice.location}</span> parking
+                          {locationPrice.surgeApplied && (
+                            <span className="ml-2 inline-block px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded">Rush +{locationPrice.surgePercent ?? ''}%</span>
+                          )}
                         </p>
                       )}
                     </div>
@@ -776,7 +787,10 @@ const BookSpot = () => {
                     {selectedSpot.spotNum} - {selectedSpot.area} (Floor {selectedSpot.floor})
                   </p>
                   <p className="text-sm text-gray-600">Parking Lot Name: {selectedSpot.parkingLotName}</p>
-                  <p className="text-sm text-gray-600">Price: ৳{selectedSpot.pricePerHour}/hour</p>
+                  <p className="text-sm text-gray-600">Price: ৳{selectedSpot.computedPricePerHour ?? selectedSpot.pricePerHour}/hour</p>
+                          {selectedSpot.surgeApplied && (
+                            <p className="text-xs text-rose-700 font-medium">Rush hour pricing applied (+{selectedSpot.surgePercent}%)</p>
+                          )}
                 </div>
 
                 <form onSubmit={handleBookSpot} className="space-y-4">
@@ -944,7 +958,10 @@ const BookSpot = () => {
                             Floor {spot.floor} • {spot.parkingLotName}
                           </p>
                           <p className="text-sm text-gray-600">
-                            Vehicle Type: {spot.vehicleType} • ৳{spot.pricePerHour}/hour
+                            Vehicle Type: {spot.vehicleType} • ৳{(spot.computedPricePerHour ?? spot.pricePerHour)}/hour
+                            {spot.surgeApplied && (
+                              <span className="ml-2 inline-block px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded">Rush +{spot.surgePercent}%</span>
+                            )}
                           </p>
                           {filters.startTime && filters.endTime && (
                             <p className="text-xs text-green-700 mt-2 font-medium">
