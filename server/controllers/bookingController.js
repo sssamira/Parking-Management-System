@@ -228,10 +228,27 @@ export const createBooking = async (req, res) => {
     }
 
     const durationMs = end.getTime() - start.getTime();
-    const durationHours = Math.max(durationMs / (1000 * 60 * 60), 0.5); // minimum 30 mins billed
+    const durationHours = Math.max(durationMs / (1000 * 60 * 60), 0.5);
+    const surgePercent = Number(process.env.SURGE_PERCENT || 20);
+    const surgeWindows = (process.env.SURGE_HOURS || '08:00-10:00,17:00-19:00').split(',').map(w=>w.split('-'));
+    const hasSurge = (() => {
+      const st = start;
+      const en = end;
+      return surgeWindows.some(([a,b]) => {
+        const [ah,am] = a.split(':').map(Number);
+        const [bh,bm] = b.split(':').map(Number);
+        const s = new Date(st);
+        const e = new Date(st);
+        s.setHours(ah,am||0,0,0);
+        e.setHours(bh,bm||0,0,0);
+        return st < e && en > s;
+      });
+    })();
+    const mult = hasSurge ? 1 + surgePercent/100 : 1;
+    const effectiveRate = Number(((spot.pricePerHour || 0) * mult).toFixed(2));
     const price = priceOverride !== undefined
       ? Number(priceOverride)
-      : Number((durationHours * spot.pricePerHour).toFixed(2));
+      : Number((durationHours * effectiveRate).toFixed(2));
 
     const booking = await Booking.create({
       parkingSpot: spot._id,
