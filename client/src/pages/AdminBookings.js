@@ -154,12 +154,26 @@ const AdminBookings = () => {
       const response = await api.post(`/bookings/${bookingId}/exit`);
       const data = response.data;
       
-      let message = 'Exit time recorded successfully!\n';
+      let message = 'Exit time recorded successfully!\n\n';
       message += `Total Amount: ৳${data.booking?.actualPrice?.toFixed(2) || '0.00'}\n`;
-      message += `Payment Status: ${data.booking?.paymentStatus || 'pending'}`;
       
-      if (data.paymentError) {
-        message += `\n\nNote: ${data.paymentError}`;
+      // Show accurate payment status
+      const paymentStatus = data.booking?.paymentStatus || 'pending';
+      if (paymentStatus === 'paid') {
+        message += `Payment Status: ✅ Paid (Automatically charged)`;
+        if (data.booking?.chargedAt) {
+          message += `\nCharged at: ${new Date(data.booking.chargedAt).toLocaleString()}`;
+        }
+      } else if (paymentStatus === 'failed') {
+        message += `Payment Status: ❌ Failed`;
+        if (data.paymentError) {
+          message += `\n\nError: ${data.paymentError}`;
+        }
+      } else {
+        message += `Payment Status: ⏳ Pending (Manual payment required)`;
+        if (data.paymentError) {
+          message += `\n\nNote: ${data.paymentError}`;
+        }
       }
       
       window.alert(message);

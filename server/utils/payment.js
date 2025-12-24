@@ -156,6 +156,7 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
 
 /**
  * Charge user's saved payment method
+ * Note: Stripe requires minimum $0.50 USD charge. BDT amounts are converted to USD.
  */
 export const chargePaymentMethod = async (customerId, paymentMethodId, amount, currency = 'bdt', metadata = {}) => {
   const stripeInstance = getStripe();
@@ -164,16 +165,61 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
   }
 
   try {
+    // BDT to USD conversion rate (approximate, update as needed)
+    // Current rate: ~1 USD = 110 BDT (adjust based on current exchange rate)
+    const BDT_TO_USD_RATE = parseFloat(process.env.BDT_TO_USD_RATE || '110');
+    
+    let amountInCents;
+    let finalCurrency = 'usd';
+    let originalAmount = amount;
+    
+    if (currency.toLowerCase() === 'bdt') {
+      // Convert BDT to USD
+      const amountInUSD = amount / BDT_TO_USD_RATE;
+      
+      // Stripe minimum is $0.50 (50 cents)
+      const MINIMUM_CHARGE_USD = 0.50;
+      
+      if (amountInUSD < MINIMUM_CHARGE_USD) {
+        // If amount is below minimum, charge the minimum
+        console.log(`⚠️  Amount ${amount} BDT ($${amountInUSD.toFixed(2)} USD) is below Stripe minimum of $${MINIMUM_CHARGE_USD}`);
+        console.log(`   Charging minimum amount: $${MINIMUM_CHARGE_USD}`);
+        amountInCents = Math.round(MINIMUM_CHARGE_USD * 100); // 50 cents in cents
+      } else {
+        // Convert to cents and round
+        amountInCents = Math.round(amountInUSD * 100);
+      }
+      
+      console.log(`💳 Payment Details:`);
+      console.log(`   Original Amount: ৳${amount.toFixed(2)} BDT`);
+      console.log(`   Converted to USD: $${(amountInCents / 100).toFixed(2)}`);
+      console.log(`   Amount in cents: ${amountInCents}`);
+    } else {
+      // For other currencies, use as-is but ensure minimum
+      const MINIMUM_CHARGE_CENTS = 50; // $0.50 minimum
+      amountInCents = Math.round(amount * 100);
+      
+      if (amountInCents < MINIMUM_CHARGE_CENTS) {
+        console.log(`⚠️  Amount ${amount} ${currency} is below Stripe minimum`);
+        console.log(`   Charging minimum amount`);
+        amountInCents = MINIMUM_CHARGE_CENTS;
+      }
+      
+      finalCurrency = currency.toLowerCase();
+    }
+
     // Create payment intent
     const paymentIntent = await stripeInstance.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to smallest currency unit (paise for BDT)
-      currency: currency.toLowerCase(),
+      amount: amountInCents,
+      currency: finalCurrency,
       customer: customerId,
       payment_method: paymentMethodId,
       off_session: true, // Indicates this is a saved payment method
       confirm: true, // Automatically confirm the payment
       metadata: {
         ...metadata,
+        originalAmount: originalAmount.toString(),
+        originalCurrency: currency,
         timestamp: new Date().toISOString(),
       },
     });
@@ -184,14 +230,25 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
       status: paymentIntent.status,
       amount: paymentIntent.amount / 100, // Convert back to main currency unit
       currency: paymentIntent.currency,
+      originalAmount: originalAmount,
+      originalCurrency: currency,
     };
   } catch (error) {
     console.error('Error charging payment method:', error);
+    console.error('Error details:', {
+      type: error.type,
+      code: error.code,
+      message: error.message,
+    });
     
     // Handle specific Stripe errors
     if (error.type === 'StripeCardError') {
       throw new Error(`Payment failed: ${error.message}`);
     } else if (error.type === 'StripeInvalidRequestError') {
+      // Provide more helpful error message
+      if (error.message?.includes('Amount must convert to at least')) {
+        throw new Error(`Payment amount too small. Minimum charge is $0.50 USD. Your amount of ৳${amount} converts to approximately $${(amount / 110).toFixed(2)}. Please contact support for small amount payments.`);
+      }
       throw new Error(`Invalid payment request: ${error.message}`);
     } else {
       throw new Error(`Payment processing error: ${error.message}`);
