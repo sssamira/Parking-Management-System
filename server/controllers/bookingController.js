@@ -5,8 +5,15 @@ import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, calculateParkingFee } from '../utils/payment.js';
 
-// Build a mail transporter if SMTP env vars are set
-const transporter = (() => {
+// Build a mail transporter if SMTP env vars are set (lazy initialization)
+let _transporterInstance = null;
+
+const getTransporter = () => {
+  // Return cached instance if already created
+  if (_transporterInstance !== null) {
+    return _transporterInstance;
+  }
+
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
   
   // Check if all required variables are set
@@ -20,6 +27,7 @@ const transporter = (() => {
         SMTP_PASS: !SMTP_PASS ? 'NOT SET' : 'SET',
       });
     }
+    _transporterInstance = null;
     return null;
   }
 
@@ -32,6 +40,7 @@ const transporter = (() => {
       cleanPass.includes('your-app-password') || cleanPass.length < 10) {
     console.error('❌ SMTP configuration appears to have placeholder values!');
     console.error('   Please update your .env file with actual credentials.');
+    _transporterInstance = null;
     return null;
   }
 
@@ -39,9 +48,11 @@ const transporter = (() => {
     const secure = SMTP_SECURE === 'true' || SMTP_SECURE === true;
     const port = Number(SMTP_PORT);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Creating SMTP transporter...');
-    }
+    console.log('🔄 Creating SMTP transporter...');
+    console.log(`   Host: ${SMTP_HOST}`);
+    console.log(`   Port: ${port}`);
+    console.log(`   Secure: ${secure}`);
+    console.log(`   User: ${cleanUser}`);
     
     const transport = nodemailer.createTransport({
       host: SMTP_HOST.trim(),
@@ -64,28 +75,39 @@ const transporter = (() => {
     transport.verify((error) => {
       if (error) {
         console.error('❌ SMTP verification failed:', error.message);
-      } else if (process.env.NODE_ENV === 'development') {
+        console.error('   This might affect email sending. Check your SMTP credentials.');
+      } else {
         console.log('✅ SMTP configured successfully');
       }
     });
     
+    _transporterInstance = transport;
     return transport;
   } catch (error) {
     console.error('❌ Failed to create SMTP transporter:', error.message);
     console.error('   Full error:', error);
+    _transporterInstance = null;
     return null;
   }
-})();
+};
+
+// For backward compatibility, export a getter
+const transporter = getTransporter;
 
 const sendBookingEmail = async ({ to, subject, html }) => {
   console.log(`\n📧 ========== sendBookingEmail CALLED ==========`);
   console.log(`   To: ${to}`);
   console.log(`   Subject: ${subject}`);
+  
+  // Get transporter (lazy initialization)
+  const transporter = getTransporter();
   console.log(`   Transporter exists: ${transporter ? 'YES ✅' : 'NO ❌'}`);
   console.log(`   Transporter type: ${typeof transporter}`);
   
   if (!transporter) {
     console.error(`❌ SMTP transporter is NULL! Email not sent to: ${to}`);
+    console.error(`   Please check your SMTP configuration in .env file`);
+    console.error(`   Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS`);
     return { success: false, error: 'SMTP not configured', messageId: null };
   }
   
@@ -958,7 +980,7 @@ export const recordExit = async (req, res) => {
 
     const booking = await Booking.findById(id)
       .populate('parkingSpot')
-      .populate('user');
+      .populate('user', 'name email hasPaymentMethod stripeCustomerId paymentMethodId paymentMethodLast4 paymentMethodBrand');
     
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -1012,7 +1034,19 @@ export const recordExit = async (req, res) => {
     let paymentResult = null;
     let paymentError = null;
 
+    // Debug logging for payment method detection
+    console.log('\n💳 Payment Method Check:');
+    console.log(`   User exists: ${user ? 'YES' : 'NO'}`);
+    if (user) {
+      console.log(`   User ID: ${user._id}`);
+      console.log(`   hasPaymentMethod: ${user.hasPaymentMethod}`);
+      console.log(`   stripeCustomerId: ${user.stripeCustomerId || 'MISSING'}`);
+      console.log(`   paymentMethodId: ${user.paymentMethodId || 'MISSING'}`);
+      console.log(`   User object keys: ${Object.keys(user).join(', ')}`);
+    }
+
     if (user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
+      console.log('   ✅ Payment method detected - attempting to charge');
       try {
         // Charge the user's saved payment method
         paymentResult = await chargePaymentMethod(
@@ -1047,8 +1081,76 @@ export const recordExit = async (req, res) => {
       }
     } else {
       // No payment method saved
-      booking.paymentStatus = 'pending';
-      paymentError = 'No payment method saved. Payment will be processed manually.';
+      console.log('   ❌ Payment method not detected');
+      if (!user) {
+        console.log('   Reason: User object is null');
+      } else if (!user.hasPaymentMethod) {
+        console.log('   Reason: hasPaymentMethod is false');
+      } else if (!user.stripeCustomerId) {
+        console.log('   Reason: stripeCustomerId is missing');
+      } else if (!user.paymentMethodId) {
+        console.log('   Reason: paymentMethodId is missing');
+      }
+      
+      // Try to fetch user from database if populated user doesn't have payment info
+      if (user && user._id && (!user.hasPaymentMethod || !user.stripeCustomerId || !user.paymentMethodId)) {
+        console.log('   🔍 Attempting to fetch user from database...');
+        try {
+          const userDoc = await User.findById(user._id).select('hasPaymentMethod stripeCustomerId paymentMethodId paymentMethodLast4 paymentMethodBrand');
+          if (userDoc) {
+            console.log(`   ✅ Found user in database:`);
+            console.log(`      hasPaymentMethod: ${userDoc.hasPaymentMethod}`);
+            console.log(`      stripeCustomerId: ${userDoc.stripeCustomerId || 'MISSING'}`);
+            console.log(`      paymentMethodId: ${userDoc.paymentMethodId || 'MISSING'}`);
+            
+            if (userDoc.hasPaymentMethod && userDoc.stripeCustomerId && userDoc.paymentMethodId) {
+              console.log('   ✅ Payment method found in database - attempting to charge');
+              try {
+                paymentResult = await chargePaymentMethod(
+                  userDoc.stripeCustomerId,
+                  userDoc.paymentMethodId,
+                  actualPrice,
+                  'bdt',
+                  {
+                    bookingId: booking._id.toString(),
+                    userId: userDoc._id.toString(),
+                    parkingLot: booking.parkingSpot?.parkingLotName || 'Unknown',
+                    spotNum: booking.parkingSpot?.spotNum || 'Unknown',
+                  }
+                );
+
+                if (paymentResult.success) {
+                  booking.paymentStatus = 'paid';
+                  booking.paymentIntentId = paymentResult.paymentIntentId;
+                  booking.paymentMethodId = userDoc.paymentMethodId;
+                  booking.chargedAt = new Date();
+                  booking.paymentError = null;
+                  paymentError = null;
+                } else {
+                  booking.paymentStatus = 'failed';
+                  paymentError = 'Payment processing failed';
+                  booking.paymentError = paymentError;
+                }
+              } catch (paymentErr) {
+                console.error('Payment processing error:', paymentErr);
+                booking.paymentStatus = 'failed';
+                paymentError = paymentErr.message || 'Payment processing failed';
+                booking.paymentError = paymentError;
+              }
+            } else {
+              booking.paymentStatus = 'pending';
+              paymentError = 'No payment method saved. Payment will be processed manually.';
+            }
+          }
+        } catch (dbErr) {
+          console.error('Error fetching user from database:', dbErr);
+          booking.paymentStatus = 'pending';
+          paymentError = 'No payment method saved. Payment will be processed manually.';
+        }
+      } else {
+        booking.paymentStatus = 'pending';
+        paymentError = 'No payment method saved. Payment will be processed manually.';
+      }
     }
 
     booking.status = 'completed';
