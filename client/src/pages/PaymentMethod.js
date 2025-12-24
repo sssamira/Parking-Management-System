@@ -78,7 +78,19 @@ const PaymentMethodForm = ({ onSuccess, onCancel, userEmail }) => {
       }
     } catch (err) {
       console.error('Save payment method error:', err);
-      setError(err.response?.data?.message || 'Failed to save payment method. Please try again.');
+      console.error('Error details:', err.response?.data);
+      
+      // Show more detailed error message
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.message || 
+                          'Failed to save payment method. Please try again.';
+      setError(errorMessage);
+      
+      // If it's a development error, show additional details
+      if (err.response?.data?.details && process.env.NODE_ENV === 'development') {
+        console.error('Error details:', err.response.data.details);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,9 +109,7 @@ const PaymentMethodForm = ({ onSuccess, onCancel, userEmail }) => {
         color: '#9e2146',
       },
     },
-    // Enable Google Pay and other payment methods
-    paymentMethodCreation: 'manual',
-    // Better support for card saving
+    // Enable Stripe Link for better Google Pay integration
     hidePostalCode: false,
   };
 
@@ -370,7 +380,15 @@ const PaymentMethod = () => {
               {showForm && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h3 className="text-lg font-semibold mb-4">Update Payment Method</h3>
-                  <Elements stripe={stripePromise}>
+                  <Elements 
+                    stripe={stripePromise}
+                    options={{
+                      // Enable Stripe Link for Google Pay and better card saving
+                      appearance: {
+                        theme: 'stripe',
+                      },
+                    }}
+                  >
                     <PaymentMethodForm 
                       onSuccess={handleSuccess} 
                       onCancel={() => setShowForm(false)}
@@ -408,7 +426,15 @@ const PaymentMethod = () => {
               ) : (
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Add Payment Method</h3>
-                  <Elements stripe={stripePromise}>
+                  <Elements 
+                    stripe={stripePromise}
+                    options={{
+                      // Enable Stripe Link for Google Pay and better card saving
+                      appearance: {
+                        theme: 'stripe',
+                      },
+                    }}
+                  >
                     <PaymentMethodForm 
                       onSuccess={handleSuccess} 
                       onCancel={() => setShowForm(false)}

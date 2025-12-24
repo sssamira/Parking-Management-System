@@ -2,9 +2,25 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Load environment variables
-dotenv.config();
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from .env file in server directory
+dotenv.config({ path: join(__dirname, '.env') });
+
+// Debug: Log if Stripe key is loaded
+if (process.env.STRIPE_SECRET_KEY) {
+  console.log('✅ STRIPE_SECRET_KEY loaded from .env file');
+  console.log('   Key length:', process.env.STRIPE_SECRET_KEY.length);
+} else {
+  console.error('❌ STRIPE_SECRET_KEY not found in environment variables');
+  console.error('   Make sure .env file exists in server directory');
+  console.error('   Current directory:', __dirname);
+}
 
 const app = express();
 

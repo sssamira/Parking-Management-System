@@ -409,9 +409,30 @@ export const savePaymentMethod = async (req, res) => {
     });
   } catch (error) {
     console.error('Save payment method error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+    });
+    
+    // Provide more detailed error messages
+    let errorMessage = 'Error saving payment method';
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.type === 'StripeInvalidRequestError') {
+      errorMessage = 'Invalid payment method. Please check your card details.';
+    } else if (error.type === 'StripeCardError') {
+      errorMessage = 'Card error: ' + (error.message || 'Please check your card details.');
+    }
+    
     return res.status(500).json({
-      message: 'Error saving payment method',
+      message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      details: process.env.NODE_ENV === 'development' ? {
+        type: error.type,
+        code: error.code,
+      } : undefined,
     });
   }
 };
