@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════
+  QUICK STRIPE SETUP INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+
+The .env files have been created with placeholders. 
+You need to add your actual Stripe API keys.
+
+STEP 1: Get Your Stripe Keys
+─────────────────────────────
+1. Go to: https://dashboard.stripe.com/test/apikeys
+2. Sign in or create a free Stripe account
+3. Make sure you're in TEST MODE (toggle in top right)
+4. Copy your "Publishable key" (starts with pk_test_...)
+5. Click "Reveal test key" and copy your "Secret key" (starts with sk_test_...)
+
+STEP 2: Update client/.env
+─────────────────────────────
+Open: client/.env
+Find: REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_PUBLISHABLE_KEY_HERE
+Replace with: REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_ACTUAL_KEY
+
+STEP 3: Update server/.env
+─────────────────────────────
+Open: server/.env
+Find: STRIPE_SECRET_KEY=sk_test_YOUR_SECRET_KEY_HERE
+Replace with: STRIPE_SECRET_KEY=sk_test_YOUR_ACTUAL_KEY
+
+STEP 4: Restart Servers
+─────────────────────────────
+1. Stop both client and server (Ctrl+C)
+2. Start them again:
+   - npm start (in client directory)
+   - npm start (in server directory)
+
+STEP 5: Test
+─────────────────────────────
+1. Go to Payment Method page
+2. Use test card: 4242 4242 4242 4242
+3. Expiry: 12/34
+4. CVC: 123
+
+═══════════════════════════════════════════════════════════════
+For detailed instructions, see: STRIPE_SETUP.md
+═══════════════════════════════════════════════════════════════
+

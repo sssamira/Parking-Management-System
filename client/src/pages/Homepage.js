@@ -384,7 +384,7 @@ const Homepage = () => {
                     View all feedback you've submitted. Check the status of your suggestions and complaints.
                   </p>
               </Link>
-              <Link
+                  <Link
                   to="/all-spots"
                   className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(63,81,181,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(63,81,181,0.45)] transition"
                   >
@@ -396,6 +396,19 @@ const Homepage = () => {
                     Search and view all available parking spots across different lots. 
                   </p>
                   </Link>
+
+              <Link
+                to="/payment-method"
+                className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(34,197,94,0.35)] p-8 border border-green-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(34,197,94,0.45)] transition"
+              >
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-green-100 text-green-600 text-3xl mb-4">
+                  💳
+                </div>
+                <h3 className="text-xl font-semibold text-indigo-900 mb-2">Payment Method</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Save your payment method for automatic parking fee payments. Enable seamless checkout when exiting.
+                </p>
+              </Link>
               
             </>
           )}

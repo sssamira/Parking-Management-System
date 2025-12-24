@@ -1,12 +1,30 @@
 import Stripe from 'stripe';
 
 // Initialize Stripe with API key from environment
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_51SafMe4uUluNRMATQsV9RaT4e8147AoLf45c4z5JGmCZDVZqm7rfQ9pWAJbqG6UL9ioFNxFRfaZNrd17Ubk7U9Kw00CCUwMU2P');
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+if (!stripeSecretKey) {
+  console.error('⚠️ STRIPE_SECRET_KEY is not set in environment variables!');
+  console.error('   Please add STRIPE_SECRET_KEY to your server/.env file');
+  console.error('   Get your key from: https://dashboard.stripe.com/test/apikeys');
+  console.error('   Payment processing will not work until this is configured.');
+}
+
+if (stripeSecretKey && !stripeSecretKey.startsWith('sk_test_') && !stripeSecretKey.startsWith('sk_live_')) {
+  console.warn('⚠️ STRIPE_SECRET_KEY does not appear to be a valid Stripe secret key');
+  console.warn('   Secret keys should start with "sk_test_" (test) or "sk_live_" (live)');
+}
+
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 /**
  * Create or retrieve Stripe customer for user
  */
 export const getOrCreateStripeCustomer = async (user) => {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY in your environment variables.');
+  }
+
   try {
     // If user already has a Stripe customer ID, return it
     if (user.stripeCustomerId) {
@@ -34,6 +52,10 @@ export const getOrCreateStripeCustomer = async (user) => {
  * Attach payment method to customer
  */
 export const attachPaymentMethod = async (customerId, paymentMethodId) => {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY in your environment variables.');
+  }
+
   try {
     // Attach payment method to customer
     await stripe.paymentMethods.attach(paymentMethodId, {
@@ -67,6 +89,10 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
  * Charge user's saved payment method
  */
 export const chargePaymentMethod = async (customerId, paymentMethodId, amount, currency = 'bdt', metadata = {}) => {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY in your environment variables.');
+  }
+
   try {
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({

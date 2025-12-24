@@ -15,6 +15,7 @@ import AdminFines from './pages/AdminFines';
 import UserFines from './pages/UserFines';
 import Chat from './pages/Chat';
 import AdminChat from './pages/AdminChat';
+import PaymentMethod from './pages/PaymentMethod';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -117,6 +118,7 @@ function App() {
             <Route path="/my-fines" element={<UserFines />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/admin/chat" element={<AdminChat />} />
+            <Route path="/payment-method" element={<PaymentMethod />} />
           </Routes>
         </div>
       </div>
