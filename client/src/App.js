@@ -16,6 +16,7 @@ import UserFines from './pages/UserFines';
 import Chat from './pages/Chat';
 import AdminChat from './pages/AdminChat';
 import PaymentMethod from './pages/PaymentMethod';
+import MyBookings from './pages/MyBookings';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -119,6 +120,7 @@ function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/admin/chat" element={<AdminChat />} />
             <Route path="/payment-method" element={<PaymentMethod />} />
+            <Route path="/my-bookings" element={<MyBookings />} />
           </Routes>
         </div>
       </div>

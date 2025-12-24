@@ -520,31 +520,25 @@ export const approveBooking = async (req, res) => {
         }
       }
 
-      if (!userEmail) {
-        console.error(`❌ Cannot send email - user email is missing!`);
-        console.error(`   Booking ID: ${booking._id}`);
-        console.error(`   User object: ${JSON.stringify(booking.user)}`);
-        return res.status(400).json({ 
-          message: 'Cannot send approval email - user email is missing. Please ensure the user has an email address in their profile.',
-          booking 
-        });
-      }
-
       // For search queries, mark as approved (admin will assign spot later)
+      // Approve the booking FIRST, then try to send email
       booking.status = 'approved';
       await booking.save();
 
-      // Send approval email for search query
-      console.log(`\n🔔 Approving search query - preparing to send email:`);
-      console.log(`   Booking ID: ${booking._id}`);
-      console.log(`   User: ${userName || 'N/A'}`);
-      console.log(`   User Email: ${userEmail}`);
+      // Send approval email for search query (optional - don't block approval if email fails)
+      let emailResult = { success: false, error: 'Email not sent' };
       
-      console.log(`\n📬 About to call sendBookingEmail for search query approval:`);
-      console.log(`   Email address: ${userEmail}`);
-      console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
-      
-      const emailResult = await sendBookingEmail({
+      if (userEmail) {
+        console.log(`\n🔔 Approving search query - preparing to send email:`);
+        console.log(`   Booking ID: ${booking._id}`);
+        console.log(`   User: ${userName || 'N/A'}`);
+        console.log(`   User Email: ${userEmail}`);
+        
+        console.log(`\n📬 About to call sendBookingEmail for search query approval:`);
+        console.log(`   Email address: ${userEmail}`);
+        console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
+        
+        emailResult = await sendBookingEmail({
         to: userEmail,
         subject: 'Your parking spot request has been approved',
         html: `
@@ -560,7 +554,12 @@ export const approveBooking = async (req, res) => {
           <p>We will contact you shortly with spot assignment details.</p>
           <p>Thank you for choosing our service.</p>
         `,
-      });
+        });
+      } else {
+        console.warn(`⚠️  User email not available - booking approved but email not sent`);
+        console.warn(`   Booking ID: ${booking._id}`);
+        console.warn(`   User: ${userName || 'N/A'}`);
+      }
       
       // Update booking with email status
       booking.emailSent = emailResult.success;
@@ -626,34 +625,28 @@ export const approveBooking = async (req, res) => {
       }
     }
 
-    if (!userEmail) {
-      console.error(`❌ Cannot send email - user email is missing!`);
-      console.error(`   Booking ID: ${booking._id}`);
-      console.error(`   User object: ${JSON.stringify(booking.user)}`);
-      return res.status(400).json({ 
-        message: 'Cannot send confirmation email - user email is missing. Please ensure the user has an email address in their profile.',
-        booking 
-      });
-    }
-
     // Update status to 'booked' (approved)
+    // Approve the booking FIRST, then try to send email
     booking.status = 'booked';
     await booking.save();
 
-    // Send confirmation email to user
-    const start = new Date(booking.startTime);
-    const end = new Date(booking.endTime);
+    // Send confirmation email to user (optional - don't block approval if email fails)
+    let emailResult = { success: false, error: 'Email not sent' };
     
-    console.log(`\n🔔 Approving booking - preparing to send email:`);
-    console.log(`   Booking ID: ${booking._id}`);
-    console.log(`   User: ${userName || 'N/A'}`);
-    console.log(`   User Email: ${userEmail}`);
-    
-    console.log(`\n📬 About to call sendBookingEmail for approval:`);
-    console.log(`   Email address: ${userEmail}`);
-    console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
-    
-    const emailResult = await sendBookingEmail({
+    if (userEmail) {
+      const start = new Date(booking.startTime);
+      const end = new Date(booking.endTime);
+      
+      console.log(`\n🔔 Approving booking - preparing to send email:`);
+      console.log(`   Booking ID: ${booking._id}`);
+      console.log(`   User: ${userName || 'N/A'}`);
+      console.log(`   User Email: ${userEmail}`);
+      
+      console.log(`\n📬 About to call sendBookingEmail for approval:`);
+      console.log(`   Email address: ${userEmail}`);
+      console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
+      
+      emailResult = await sendBookingEmail({
       to: userEmail,
       subject: 'Your parking spot booking is confirmed',
       html: `
@@ -670,7 +663,12 @@ export const approveBooking = async (req, res) => {
         </ul>
         <p>Thank you for choosing our service.</p>
       `,
-    });
+      });
+    } else {
+      console.warn(`⚠️  User email not available - booking approved but email not sent`);
+      console.warn(`   Booking ID: ${booking._id}`);
+      console.warn(`   User: ${userName || 'N/A'}`);
+    }
     
     // Update booking with email status
     booking.emailSent = emailResult.success;
@@ -678,9 +676,9 @@ export const approveBooking = async (req, res) => {
     booking.emailError = emailResult.success ? null : emailResult.error;
     await booking.save();
     
-      if (!emailResult.success && emailResult.error !== 'SMTP not configured') {
-        console.error('Email send failed:', emailResult.error);
-      }
+    if (!emailResult.success && emailResult.error !== 'SMTP not configured') {
+      console.error('Email send failed:', emailResult.error);
+    }
 
     return res.status(200).json({
       message: emailResult.success 
@@ -759,30 +757,24 @@ export const rejectBooking = async (req, res) => {
       }
     }
 
-    if (!userEmail) {
-      console.error(`❌ Cannot send email - user email is missing!`);
-      console.error(`   Booking ID: ${booking._id}`);
-      console.error(`   User object: ${JSON.stringify(booking.user)}`);
-      return res.status(400).json({ 
-        message: 'Cannot send rejection email - user email is missing. Please ensure the user has an email address in their profile.',
-        booking 
-      });
-    }
-    
+    // Reject the booking FIRST, then try to send email
     booking.status = 'rejected';
     await booking.save();
 
-    // Send rejection email to user immediately
-    console.log(`\n🔔 Rejecting booking - preparing to send email:`);
-    console.log(`   Booking ID: ${booking._id}`);
-    console.log(`   User: ${userName || 'N/A'}`);
-    console.log(`   User Email: ${userEmail}`);
+    // Send rejection email to user (optional - don't block rejection if email fails)
+    let emailResult = { success: false, error: 'Email not sent' };
     
-    console.log(`\n📬 About to call sendBookingEmail for rejection:`);
-    console.log(`   Email address: ${userEmail}`);
-    console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
-    
-    const emailResult = await sendBookingEmail({
+    if (userEmail) {
+      console.log(`\n🔔 Rejecting booking - preparing to send email:`);
+      console.log(`   Booking ID: ${booking._id}`);
+      console.log(`   User: ${userName || 'N/A'}`);
+      console.log(`   User Email: ${userEmail}`);
+      
+      console.log(`\n📬 About to call sendBookingEmail for rejection:`);
+      console.log(`   Email address: ${userEmail}`);
+      console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
+      
+      emailResult = await sendBookingEmail({
       to: userEmail,
       subject: 'Your parking spot booking request has been rejected',
       html: `
@@ -810,7 +802,12 @@ export const rejectBooking = async (req, res) => {
         <p>Thank you for your understanding.</p>
         <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply to this message.</p>
       `,
-    });
+      });
+    } else {
+      console.warn(`⚠️  User email not available - booking rejected but email not sent`);
+      console.warn(`   Booking ID: ${booking._id}`);
+      console.warn(`   User: ${userName || 'N/A'}`);
+    }
     
     // Update booking with email status
     booking.emailSent = emailResult.success;
@@ -818,9 +815,9 @@ export const rejectBooking = async (req, res) => {
     booking.emailError = emailResult.success ? null : emailResult.error;
     await booking.save();
     
-      if (!emailResult.success && emailResult.error !== 'SMTP not configured') {
-        console.error('Email send failed:', emailResult.error);
-      }
+    if (!emailResult.success && emailResult.error !== 'SMTP not configured') {
+      console.error('Email send failed:', emailResult.error);
+    }
 
     return res.status(200).json({
       message: emailResult.success 

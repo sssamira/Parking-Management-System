@@ -346,7 +346,8 @@ const AdminBookings = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex flex-col space-y-2">
-                            {!isSearchQuery && (
+                            {/* Show Accept/Reject for pending bookings and search queries */}
+                            {(booking.status === 'pending' || booking.status === 'search_query') && (
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleApprove(booking._id)}
@@ -390,10 +391,34 @@ const AdminBookings = () => {
                                   </button>
                                 )}
                                 {booking.actualExitTime && (
-                                  <span className="text-xs text-gray-600">
-                                    Exited: {new Date(booking.actualExitTime).toLocaleTimeString()}
-                                    {booking.actualPrice > 0 && ` | ৳${booking.actualPrice.toFixed(2)}`}
-                                  </span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-gray-600">
+                                      Exited: {new Date(booking.actualExitTime).toLocaleTimeString()}
+                                    </span>
+                                    {booking.actualPrice > 0 && (
+                                      <span className="text-xs font-semibold text-indigo-600">
+                                        Fee: ৳{booking.actualPrice.toFixed(2)}
+                                      </span>
+                                    )}
+                                    {booking.paymentStatus && (
+                                      <span className={`text-xs px-2 py-0.5 rounded ${
+                                        booking.paymentStatus === 'paid' 
+                                          ? 'bg-green-100 text-green-800' 
+                                          : booking.paymentStatus === 'failed'
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                      }`}>
+                                        {booking.paymentStatus === 'paid' ? '✓ Paid' : 
+                                         booking.paymentStatus === 'failed' ? '✗ Failed' : 
+                                         'Pending'}
+                                      </span>
+                                    )}
+                                    {booking.paymentError && (
+                                      <span className="text-xs text-red-600">
+                                        {booking.paymentError}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
