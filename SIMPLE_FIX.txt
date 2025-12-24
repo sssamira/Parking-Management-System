@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════
+  SIMPLE FIX - 3 STEPS TO FIX STRIPE ERROR
+═══════════════════════════════════════════════════════════════
+
+You're seeing this error because client/.env has a placeholder key.
+
+STEP 1: Get Your Key (30 seconds)
+───────────────────────────────────
+1. Open: https://dashboard.stripe.com/test/apikeys
+2. Log in (you already have an account - you have a secret key!)
+3. Find "Publishable key" on the page
+4. Click "Copy" or select and copy the entire key
+   (It starts with: pk_test_51...)
+
+STEP 2: Update client/.env (10 seconds)
+────────────────────────────────────────
+1. Open the file: client/.env
+2. Find this line:
+   REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_PUBLISHABLE_KEY_HERE
+3. Replace it with:
+   REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_ACTUAL_KEY_PASTE_HERE
+   (Paste your actual key where it says YOUR_ACTUAL_KEY_PASTE_HERE)
+4. Save the file
+
+STEP 3: Restart Client (5 seconds)
+───────────────────────────────────
+1. Stop your React client (press Ctrl+C in the terminal where it's running)
+2. Start it again: cd client && npm start
+
+DONE! The error will be gone! ✅
+
+═══════════════════════════════════════════════════════════════
+Still need help? Run: .\setup-stripe.ps1
+═══════════════════════════════════════════════════════════════
+

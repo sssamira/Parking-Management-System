@@ -7,15 +7,27 @@ import api from '../utils/api';
 // Initialize Stripe - Get publishable key from environment
 const stripePublishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
 
+// Check if key is missing or still a placeholder
+const isPlaceholderKey = stripePublishableKey && (
+  stripePublishableKey.includes('YOUR_PUBLISHABLE_KEY') ||
+  stripePublishableKey.includes('YOUR_ACTUAL') ||
+  stripePublishableKey.includes('placeholder') ||
+  stripePublishableKey.length < 50 // Real Stripe keys are much longer
+);
+
 if (!stripePublishableKey) {
   console.error('⚠️ REACT_APP_STRIPE_PUBLISHABLE_KEY is not set in environment variables!');
   console.error('   Please add REACT_APP_STRIPE_PUBLISHABLE_KEY to your client/.env file');
   console.error('   Get your key from: https://dashboard.stripe.com/test/apikeys');
+} else if (isPlaceholderKey) {
+  console.error('⚠️ REACT_APP_STRIPE_PUBLISHABLE_KEY appears to be a placeholder!');
+  console.error('   Please replace the placeholder with your actual Stripe publishable key');
+  console.error('   Get your key from: https://dashboard.stripe.com/test/apikeys');
 }
 
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+const stripePromise = (stripePublishableKey && !isPlaceholderKey) ? loadStripe(stripePublishableKey) : null;
 
-const PaymentMethodForm = ({ onSuccess, onCancel }) => {
+const PaymentMethodForm = ({ onSuccess, onCancel, userEmail }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -40,10 +52,14 @@ const PaymentMethodForm = ({ onSuccess, onCancel }) => {
         return;
       }
 
-      // Create payment method
+      // Create payment method with billing details for better saving
+      // Including email helps with Google Pay and card saving to user's account
       const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
+        billing_details: {
+          email: userEmail || undefined,
+        },
       });
 
       if (pmError) {
@@ -81,6 +97,10 @@ const PaymentMethodForm = ({ onSuccess, onCancel }) => {
         color: '#9e2146',
       },
     },
+    // Enable Google Pay and other payment methods
+    paymentMethodCreation: 'manual',
+    // Better support for card saving
+    hidePostalCode: false,
   };
 
   return (
@@ -221,7 +241,14 @@ const PaymentMethod = () => {
   }
 
   // Check if Stripe is configured
-  if (!stripePublishableKey || !stripePromise) {
+  const isPlaceholderKey = stripePublishableKey && (
+    stripePublishableKey.includes('YOUR_PUBLISHABLE_KEY') ||
+    stripePublishableKey.includes('YOUR_ACTUAL') ||
+    stripePublishableKey.includes('placeholder') ||
+    (stripePublishableKey.length < 50)
+  );
+
+  if (!stripePublishableKey || !stripePromise || isPlaceholderKey) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] text-gray-800">
         <div className="max-w-2xl mx-auto px-4 py-8">
@@ -244,13 +271,22 @@ const PaymentMethod = () => {
               </h2>
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-6 text-left">
                 <p className="text-red-800 font-semibold mb-3">Setup Required:</p>
+                {isPlaceholderKey ? (
+                  <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded">
+                    <p className="text-yellow-800 font-semibold mb-2">⚠️ Placeholder Key Detected!</p>
+                    <p className="text-sm text-yellow-700">
+                      Your <code className="bg-yellow-200 px-1 rounded">client/.env</code> file still contains a placeholder key.
+                      Please replace <code className="bg-yellow-200 px-1 rounded">pk_test_YOUR_PUBLISHABLE_KEY_HERE</code> with your actual Stripe key.
+                    </p>
+                  </div>
+                ) : null}
                 <ol className="list-decimal list-inside space-y-2 text-sm text-red-700">
                   <li>Get your Stripe API keys from <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Stripe Dashboard</a></li>
-                  <li>Create a <code className="bg-red-100 px-1 rounded">client/.env</code> file</li>
-                  <li>Add: <code className="bg-red-100 px-1 rounded">REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_...</code></li>
-                  <li>Create a <code className="bg-red-100 px-1 rounded">server/.env</code> file</li>
-                  <li>Add: <code className="bg-red-100 px-1 rounded">STRIPE_SECRET_KEY=sk_test_...</code></li>
-                  <li>Restart both client and server</li>
+                  <li>Open <code className="bg-red-100 px-1 rounded">client/.env</code> file</li>
+                  <li>Replace the placeholder with your actual key: <code className="bg-red-100 px-1 rounded">REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_ACTUAL_KEY</code></li>
+                  <li>Open <code className="bg-red-100 px-1 rounded">server/.env</code> file</li>
+                  <li>Replace the placeholder with your actual key: <code className="bg-red-100 px-1 rounded">STRIPE_SECRET_KEY=sk_test_YOUR_ACTUAL_KEY</code></li>
+                  <li><strong>Restart both client and server</strong> (important!)</li>
                 </ol>
               </div>
               <p className="text-gray-600 text-sm">
@@ -338,6 +374,7 @@ const PaymentMethod = () => {
                     <PaymentMethodForm 
                       onSuccess={handleSuccess} 
                       onCancel={() => setShowForm(false)}
+                      userEmail={user?.email}
                     />
                   </Elements>
                 </div>
@@ -375,6 +412,7 @@ const PaymentMethod = () => {
                     <PaymentMethodForm 
                       onSuccess={handleSuccess} 
                       onCancel={() => setShowForm(false)}
+                      userEmail={user?.email}
                     />
                   </Elements>
                 </div>
