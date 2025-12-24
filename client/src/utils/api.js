@@ -28,7 +28,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15 second timeout (increased for slower connections)
+  timeout: 30000, // 30 second timeout (increased for database operations)
 });
 
 // Log API base URL for debugging

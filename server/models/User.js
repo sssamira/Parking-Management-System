@@ -157,6 +157,37 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    // Payment Method Storage
+    stripeCustomerId: {
+      type: String,
+      default: null,
+      select: false
+    },
+    paymentMethodId: {
+      type: String,
+      default: null,
+      select: false
+    },
+    paymentMethodLast4: {
+      type: String,
+      default: null
+    },
+    paymentMethodBrand: {
+      type: String,
+      default: null
+    },
+    paymentMethodExpMonth: {
+      type: Number,
+      default: null
+    },
+    paymentMethodExpYear: {
+      type: Number,
+      default: null
+    },
+    hasPaymentMethod: {
+      type: Boolean,
+      default: false
+    }
   },
   {
     timestamps: true,

@@ -90,8 +90,42 @@ const bookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Fine',
     default: null
+  },
+  // Entry/Exit Tracking
+  actualEntryTime: {
+    type: Date,
+    default: null
+  },
+  actualExitTime: {
+    type: Date,
+    default: null
+  },
+  // Payment Tracking
+  actualPrice: {
+    type: Number,
+    default: 0
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  paymentIntentId: {
+    type: String,
+    default: null
+  },
+  paymentMethodId: {
+    type: String,
+    default: null
+  },
+  chargedAt: {
+    type: Date,
+    default: null
+  },
+  paymentError: {
+    type: String,
+    default: null
   }
-
 
 }, { timestamps: true });
 

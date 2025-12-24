@@ -96,7 +96,37 @@ const AdminSpots = () => {
       });
     } catch (err) {
       console.error('Error creating spot:', err);
-      setError(err.response?.data?.message || 'Failed to create parking spot. Please try again.');
+      console.error('Error response:', err.response);
+      
+      // Handle different error response formats
+      let errorMessage = 'Failed to create parking spot. Please try again.';
+      
+      // Handle timeout errors specifically
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. The server is taking too long to respond. This might be due to a slow database query. Please try again, or contact support if the issue persists.';
+      }
+      // Handle network errors
+      else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      }
+      // Handle server response errors
+      else if (err.response?.data) {
+        // Check for validation errors array
+        if (err.response.data.errors && Array.isArray(err.response.data.errors)) {
+          const errorMessages = err.response.data.errors.map(e => e.message || e.msg).filter(Boolean);
+          errorMessage = errorMessages.length > 0 
+            ? errorMessages.join(', ') 
+            : err.response.data.message || errorMessage;
+        } 
+        // Check for direct message
+        else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,6 +177,9 @@ const AdminSpots = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="e.g., A-101"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  ℹ️ Spot numbers must be unique within each parking lot. The same spot number can exist in different parking lots (e.g., Spot #1 in Bashundhara City and Spot #1 in Apollo Hospital are both allowed).
+                </p>
               </div>
 
               <div>

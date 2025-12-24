@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import { getOrCreateStripeCustomer, attachPaymentMethod } from '../utils/payment.js';
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -348,10 +349,102 @@ export const getMe = async (req, res) => {
       authProvider: user.authProvider,
       profileImage: user.profileImage,
       createdAt: user.createdAt,
+      hasPaymentMethod: user.hasPaymentMethod,
+      paymentMethodLast4: user.paymentMethodLast4,
+      paymentMethodBrand: user.paymentMethodBrand,
+      paymentMethodExpMonth: user.paymentMethodExpMonth,
+      paymentMethodExpYear: user.paymentMethodExpYear,
     });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Save payment method for user
+// @route   POST /api/auth/payment-method
+// @access  Private
+export const savePaymentMethod = async (req, res) => {
+  try {
+    const { paymentMethodId } = req.body;
+    
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: 'Payment method ID is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get or create Stripe customer
+    const customer = await getOrCreateStripeCustomer(user);
+    
+    // Update user with Stripe customer ID if not already set
+    if (!user.stripeCustomerId) {
+      user.stripeCustomerId = customer.id;
+    }
+
+    // Attach payment method to customer
+    const paymentMethodDetails = await attachPaymentMethod(customer.id, paymentMethodId);
+
+    // Update user with payment method details
+    user.paymentMethodId = paymentMethodDetails.id;
+    user.paymentMethodLast4 = paymentMethodDetails.last4;
+    user.paymentMethodBrand = paymentMethodDetails.brand;
+    user.paymentMethodExpMonth = paymentMethodDetails.expMonth;
+    user.paymentMethodExpYear = paymentMethodDetails.expYear;
+    user.hasPaymentMethod = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Payment method saved successfully',
+      paymentMethod: {
+        last4: user.paymentMethodLast4,
+        brand: user.paymentMethodBrand,
+        expMonth: user.paymentMethodExpMonth,
+        expYear: user.paymentMethodExpYear,
+      },
+    });
+  } catch (error) {
+    console.error('Save payment method error:', error);
+    return res.status(500).json({
+      message: 'Error saving payment method',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Remove payment method from user
+// @route   DELETE /api/auth/payment-method
+// @access  Private
+export const removePaymentMethod = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Clear payment method details
+    user.paymentMethodId = null;
+    user.paymentMethodLast4 = null;
+    user.paymentMethodBrand = null;
+    user.paymentMethodExpMonth = null;
+    user.paymentMethodExpYear = null;
+    user.hasPaymentMethod = false;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Payment method removed successfully',
+    });
+  } catch (error) {
+    console.error('Remove payment method error:', error);
+    return res.status(500).json({
+      message: 'Error removing payment method',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 };
 

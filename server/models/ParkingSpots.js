@@ -35,6 +35,20 @@ const parkingSpotSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Pre-save hook to normalize parkingLotName for consistent case handling
+parkingSpotSchema.pre('save', function(next) {
+  // Normalize parkingLotName: trim and ensure consistent formatting
+  if (this.parkingLotName) {
+    this.parkingLotName = this.parkingLotName.trim();
+  }
+  if (this.spotNum) {
+    this.spotNum = this.spotNum.trim();
+  }
+  next();
+});
+
+// Unique compound index: ensures no duplicate spot numbers within the same parking lot
+// This allows the same spot number in different parking lots (e.g., Spot #1 in "New Market" and Spot #1 in "Apollo Hospital")
 parkingSpotSchema.index({ parkingLotName: 1, spotNum: 1 }, { unique: true });
 
 export default mongoose.model('ParkingSpot', parkingSpotSchema);

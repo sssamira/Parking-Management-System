@@ -7,9 +7,11 @@ const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
+  const [tracking, setTracking] = useState(null);
 
   useEffect(() => {
     checkAdminAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAdminAndFetch = async () => {
@@ -129,6 +131,44 @@ const AdminBookings = () => {
       await fetchPendingBookings();
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const handleRecordEntry = async (bookingId) => {
+    try {
+      setTracking(bookingId);
+      await api.post(`/bookings/${bookingId}/entry`);
+      window.alert('Entry time recorded successfully!');
+      await fetchPendingBookings();
+    } catch (err) {
+      console.error('Error recording entry:', err);
+      window.alert(err.response?.data?.message || 'Failed to record entry time');
+    } finally {
+      setTracking(null);
+    }
+  };
+
+  const handleRecordExit = async (bookingId) => {
+    try {
+      setTracking(bookingId);
+      const response = await api.post(`/bookings/${bookingId}/exit`);
+      const data = response.data;
+      
+      let message = 'Exit time recorded successfully!\n';
+      message += `Total Amount: ৳${data.booking?.actualPrice?.toFixed(2) || '0.00'}\n`;
+      message += `Payment Status: ${data.booking?.paymentStatus || 'pending'}`;
+      
+      if (data.paymentError) {
+        message += `\n\nNote: ${data.paymentError}`;
+      }
+      
+      window.alert(message);
+      await fetchPendingBookings();
+    } catch (err) {
+      console.error('Error recording exit:', err);
+      window.alert(err.response?.data?.message || 'Failed to record exit time');
+    } finally {
+      setTracking(null);
     }
   };
 
@@ -305,21 +345,58 @@ const AdminBookings = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleApprove(booking._id)}
-                              disabled={processing === booking._id}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {processing === booking._id ? 'Processing...' : 'Accept'}
-                            </button>
-                            <button
-                              onClick={() => handleReject(booking._id)}
-                              disabled={processing === booking._id}
-                              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {processing === booking._id ? 'Processing...' : 'Reject'}
-                            </button>
+                          <div className="flex flex-col space-y-2">
+                            {!isSearchQuery && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleApprove(booking._id)}
+                                  disabled={processing === booking._id}
+                                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                >
+                                  {processing === booking._id ? 'Processing...' : 'Accept'}
+                                </button>
+                                <button
+                                  onClick={() => handleReject(booking._id)}
+                                  disabled={processing === booking._id}
+                                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                >
+                                  {processing === booking._id ? 'Processing...' : 'Reject'}
+                                </button>
+                              </div>
+                            )}
+                            {/* Entry/Exit Tracking for approved/booked bookings */}
+                            {(booking.status === 'approved' || booking.status === 'booked') && (
+                              <div className="flex space-x-2">
+                                {!booking.actualEntryTime ? (
+                                  <button
+                                    onClick={() => handleRecordEntry(booking._id)}
+                                    disabled={tracking === booking._id}
+                                    className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {tracking === booking._id ? 'Recording...' : 'Record Entry'}
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-green-600 font-semibold">
+                                    ✓ Entered: {new Date(booking.actualEntryTime).toLocaleTimeString()}
+                                  </span>
+                                )}
+                                {booking.actualEntryTime && !booking.actualExitTime && (
+                                  <button
+                                    onClick={() => handleRecordExit(booking._id)}
+                                    disabled={tracking === booking._id}
+                                    className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {tracking === booking._id ? 'Processing...' : 'Record Exit'}
+                                  </button>
+                                )}
+                                {booking.actualExitTime && (
+                                  <span className="text-xs text-gray-600">
+                                    Exited: {new Date(booking.actualExitTime).toLocaleTimeString()}
+                                    {booking.actualPrice > 0 && ` | ৳${booking.actualPrice.toFixed(2)}`}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -3,6 +3,7 @@ import ParkingSpot from '../models/ParkingSpots.js';
 import User from '../models/User.js';
 import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
+import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, calculateParkingFee } from '../utils/payment.js';
 
 // Build a mail transporter if SMTP env vars are set
 const transporter = (() => {
@@ -304,7 +305,7 @@ export const getPendingBookings = async (req, res) => {
     
     try {
       bookings = await Booking.find({ 
-        status: { $in: ['pending', 'search_query'] }
+        status: { $in: ['pending', 'search_query', 'approved', 'booked'] }
       })
         .populate({
           path: 'user',
@@ -318,7 +319,7 @@ export const getPendingBookings = async (req, res) => {
       if (populateErr.message && populateErr.message.includes('Cast to ObjectId failed')) {
         console.warn('⚠️  Some bookings have invalid user IDs, using fallback query...');
         const allBookings = await Booking.find({ 
-          status: { $in: ['pending', 'search_query'] }
+          status: { $in: ['pending', 'search_query', 'approved', 'booked'] }
         })
           .sort({ createdAt: -1 })
           .lean();
@@ -865,6 +866,241 @@ export const testEmail = async (req, res) => {
     return res.status(500).json({
       message: 'Server error while sending test email',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    });
+  }
+};
+
+// @desc    Record vehicle entry time
+// @route   POST /api/bookings/:id/entry
+// @access  Private/Admin
+export const recordEntry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { entryTime } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+
+    const booking = await Booking.findById(id).populate('parkingSpot');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if booking is approved
+    if (booking.status !== 'approved' && booking.status !== 'booked') {
+      return res.status(400).json({ 
+        message: `Cannot record entry for booking with status: ${booking.status}. Booking must be approved or booked.` 
+      });
+    }
+
+    // Check if entry already recorded
+    if (booking.actualEntryTime) {
+      return res.status(400).json({ 
+        message: 'Entry time already recorded',
+        entryTime: booking.actualEntryTime
+      });
+    }
+
+    // Use provided time or current time
+    const entry = entryTime ? new Date(entryTime) : new Date();
+    
+    if (isNaN(entry.getTime())) {
+      return res.status(400).json({ message: 'Invalid entry time' });
+    }
+
+    booking.actualEntryTime = entry;
+    booking.status = 'booked'; // Update status to booked when vehicle enters
+    await booking.save();
+
+    return res.status(200).json({
+      message: 'Entry time recorded successfully',
+      booking: {
+        _id: booking._id,
+        actualEntryTime: booking.actualEntryTime,
+        status: booking.status
+      }
+    });
+  } catch (err) {
+    console.error('Record entry error:', err.message);
+    return res.status(500).json({ 
+      message: 'Server error while recording entry',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// @desc    Record vehicle exit time and process payment
+// @route   POST /api/bookings/:id/exit
+// @access  Private/Admin
+export const recordExit = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { exitTime } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+
+    const booking = await Booking.findById(id)
+      .populate('parkingSpot')
+      .populate('user');
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if entry was recorded
+    if (!booking.actualEntryTime) {
+      return res.status(400).json({ 
+        message: 'Entry time must be recorded before exit time' 
+      });
+    }
+
+    // Check if exit already recorded
+    if (booking.actualExitTime) {
+      return res.status(400).json({ 
+        message: 'Exit time already recorded',
+        exitTime: booking.actualExitTime,
+        actualPrice: booking.actualPrice,
+        paymentStatus: booking.paymentStatus
+      });
+    }
+
+    // Use provided time or current time
+    const exit = exitTime ? new Date(exitTime) : new Date();
+    
+    if (isNaN(exit.getTime())) {
+      return res.status(400).json({ message: 'Invalid exit time' });
+    }
+
+    if (exit <= booking.actualEntryTime) {
+      return res.status(400).json({ 
+        message: 'Exit time must be after entry time' 
+      });
+    }
+
+    // Get parking spot price per hour
+    const pricePerHour = booking.parkingSpot?.pricePerHour || 50; // Default to 50 if not set
+
+    // Calculate actual parking fee
+    const actualPrice = calculateParkingFee(
+      booking.actualEntryTime,
+      exit,
+      pricePerHour
+    );
+
+    booking.actualExitTime = exit;
+    booking.actualPrice = actualPrice;
+
+    // Process payment if user has payment method
+    const user = booking.user;
+    let paymentResult = null;
+    let paymentError = null;
+
+    if (user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
+      try {
+        // Charge the user's saved payment method
+        paymentResult = await chargePaymentMethod(
+          user.stripeCustomerId,
+          user.paymentMethodId,
+          actualPrice,
+          'bdt',
+          {
+            bookingId: booking._id.toString(),
+            userId: user._id.toString(),
+            parkingLot: booking.parkingSpot?.parkingLotName || 'Unknown',
+            spotNum: booking.parkingSpot?.spotNum || 'Unknown',
+          }
+        );
+
+        if (paymentResult.success) {
+          booking.paymentStatus = 'paid';
+          booking.paymentIntentId = paymentResult.paymentIntentId;
+          booking.paymentMethodId = user.paymentMethodId;
+          booking.chargedAt = new Date();
+          booking.paymentError = null;
+        } else {
+          booking.paymentStatus = 'failed';
+          paymentError = 'Payment processing failed';
+          booking.paymentError = paymentError;
+        }
+      } catch (paymentErr) {
+        console.error('Payment processing error:', paymentErr);
+        booking.paymentStatus = 'failed';
+        paymentError = paymentErr.message || 'Payment processing failed';
+        booking.paymentError = paymentError;
+      }
+    } else {
+      // No payment method saved
+      booking.paymentStatus = 'pending';
+      paymentError = 'No payment method saved. Payment will be processed manually.';
+    }
+
+    booking.status = 'completed';
+    await booking.save();
+
+    // Send confirmation email
+    try {
+      const userEmail = user?.email || 'unknown@example.com';
+      const userName = user?.name || 'User';
+      const parkingLotName = booking.parkingSpot?.parkingLotName || 'Unknown';
+      const spotNum = booking.parkingSpot?.spotNum || 'Unknown';
+      
+      const durationMs = exit.getTime() - booking.actualEntryTime.getTime();
+      const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(2);
+      
+      const emailResult = await sendBookingEmail({
+        to: userEmail,
+        subject: `Parking Session Completed - ${parkingLotName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4F46E5;">Parking Session Completed</h2>
+            <p>Hello ${userName},</p>
+            <p>Your parking session has been completed. Here are the details:</p>
+            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Parking Lot:</strong> ${parkingLotName}</p>
+              <p><strong>Spot Number:</strong> ${spotNum}</p>
+              <p><strong>Entry Time:</strong> ${new Date(booking.actualEntryTime).toLocaleString()}</p>
+              <p><strong>Exit Time:</strong> ${new Date(exit).toLocaleString()}</p>
+              <p><strong>Duration:</strong> ${durationHours} hours</p>
+              <p><strong>Total Amount:</strong> ৳${actualPrice.toFixed(2)}</p>
+              <p><strong>Payment Status:</strong> ${booking.paymentStatus === 'paid' ? '✅ Paid' : booking.paymentStatus === 'failed' ? '❌ Failed' : '⏳ Pending'}</p>
+            </div>
+            ${paymentError ? `<p style="color: #dc2626;">⚠️ ${paymentError}</p>` : ''}
+            <p>Thank you for using our parking service!</p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply.</p>
+          </div>
+        `,
+      });
+      
+      if (!emailResult.success && emailResult.error !== 'SMTP not configured') {
+        console.error('Failed to send exit confirmation email:', emailResult.error);
+      }
+    } catch (emailErr) {
+      console.error('Error sending exit confirmation email:', emailErr);
+    }
+
+    return res.status(200).json({
+      message: 'Exit time recorded successfully',
+      booking: {
+        _id: booking._id,
+        actualEntryTime: booking.actualEntryTime,
+        actualExitTime: booking.actualExitTime,
+        actualPrice: booking.actualPrice,
+        paymentStatus: booking.paymentStatus,
+        paymentIntentId: booking.paymentIntentId,
+        chargedAt: booking.chargedAt,
+      },
+      payment: paymentResult,
+      paymentError: paymentError,
+    });
+  } catch (err) {
+    console.error('Record exit error:', err.message);
+    return res.status(500).json({ 
+      message: 'Server error while recording exit',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 };

@@ -103,14 +103,32 @@ export const createParkingSpot = async (req, res) => {
       ...(Array.isArray(tags) && { tags }),
     };
 
+    // Try to create the spot - MongoDB's unique index on { parkingLotName: 1, spotNum: 1 } will catch duplicates
+    // This index ensures: same spot number can exist in different parking lots, but not in the same parking lot
+    console.log('Creating spot:', { parkingLotName: normalizedParkingLotName, spotNum: normalizedSpotNum });
     const spot = await ParkingSpot.create(payload);
+    console.log('✅ Spot created successfully:', spot._id);
     return res.status(201).json({ spot });
   } catch (err) {
     if (err && err.code === 11000) {
-      return res.status(409).json({ message: 'Spot number already exists in this parking lot' });
+      // MongoDB unique index violation - duplicate spot detected
+      // The unique index on { parkingLotName: 1, spotNum: 1 } ensures no duplicates within the same parking lot
+      console.log('✅ Duplicate detected - Spot already exists in this parking lot:', {
+        parkingLotName: normalizedParkingLotName,
+        spotNum: normalizedSpotNum,
+        keyPattern: err.keyPattern
+      });
+      
+      // Return clear error message immediately (no slow lookup)
+      return res.status(409).json({ 
+        message: `Spot number "${normalizedSpotNum}" already exists in "${normalizedParkingLotName}". Each parking lot must have unique spot numbers. You can use spot number "${normalizedSpotNum}" in other parking lots, but not in "${normalizedParkingLotName}" again.` 
+      });
     }
-    console.error(err);
-    return res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Error creating parking spot:', err);
+    return res.status(500).json({ 
+      message: err.message || 'Server error while creating parking spot', 
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   }
 };
 

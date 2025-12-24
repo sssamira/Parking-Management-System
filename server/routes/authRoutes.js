@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getMe, googleAuth } from '../controllers/authController.js';
+import { register, login, getMe, googleAuth, savePaymentMethod, removePaymentMethod } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 import { body } from 'express-validator';
@@ -52,6 +52,8 @@ router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.post('/google', googleAuth);
 router.get('/me', protect, getMe);
+router.post('/payment-method', protect, savePaymentMethod);
+router.delete('/payment-method', protect, removePaymentMethod);
 
 export default router;
 

@@ -6,7 +6,9 @@ import {
   getPendingBookings, 
   approveBooking, 
   rejectBooking,
-  testEmail
+  testEmail,
+  recordEntry,
+  recordExit
 } from '../controllers/bookingController.js';
 import { protect, admin } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
@@ -31,6 +33,10 @@ router.get('/admin/pending', protect, admin, getPendingBookings);
 router.post('/test-email', protect, admin, testEmail);
 router.patch('/:id/approve', protect, admin, approveBooking);
 router.patch('/:id/reject', protect, admin, rejectBooking);
+
+// Entry/Exit tracking routes
+router.post('/:id/entry', protect, admin, recordEntry);
+router.post('/:id/exit', protect, admin, recordExit);
 
 export default router;
 
