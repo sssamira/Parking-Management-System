@@ -918,7 +918,8 @@ export const recordEntry = async (req, res) => {
       return res.status(400).json({ message: 'Invalid booking ID' });
     }
 
-    const booking = await Booking.findById(id).populate('parkingSpot');
+    const booking = await Booking.findById(id)
+      .populate('parkingSpot', 'parkingLotName parkinglotName spotNum location floor pricePerHour vehicleType');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
@@ -978,87 +979,12 @@ export const recordExit = async (req, res) => {
       return res.status(400).json({ message: 'Invalid booking ID' });
     }
 
-    // First, get the raw booking to check for parkingSpot ID
     const booking = await Booking.findById(id)
-      .populate('parkingSpot', 'parkingLotName parkinglotName spotNum location floor pricePerHour')
+      .populate('parkingSpot', 'parkingLotName parkinglotName spotNum location floor pricePerHour vehicleType')
       .populate('user', 'name email hasPaymentMethod stripeCustomerId paymentMethodId paymentMethodLast4 paymentMethodBrand');
     
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
-    }
-    
-    // Debug: Log booking and parking spot data
-    console.log('\n🔍 Booking Data Check:');
-    console.log(`   Booking ID: ${booking._id}`);
-    console.log(`   Booking parkingSpot (populated): ${booking.parkingSpot ? 'YES' : 'NO'}`);
-    
-    // Get parking spot - try populated first, then fetch from database
-    let parkingSpot = booking.parkingSpot;
-    
-    // Check if parking spot is actually populated (has _id and other fields)
-    if (!parkingSpot || !parkingSpot._id || !parkingSpot.pricePerHour) {
-      console.log(`   ⚠️  Parking spot not properly populated, fetching from database...`);
-      
-      // Get the raw parkingSpot ID from the booking document
-      const rawBooking = await Booking.findById(id).select('parkingSpot').lean();
-      const parkingSpotId = rawBooking?.parkingSpot;
-      
-      console.log(`   Raw parkingSpot ID from booking: ${parkingSpotId}`);
-      
-      if (parkingSpotId && mongoose.Types.ObjectId.isValid(parkingSpotId)) {
-        try {
-          parkingSpot = await ParkingSpot.findById(parkingSpotId).select('parkingLotName parkinglotName spotNum location floor pricePerHour');
-          if (parkingSpot) {
-            console.log(`   ✅ Fetched parking spot from database:`);
-            console.log(`      ID: ${parkingSpot._id}`);
-            console.log(`      Parking Lot: ${parkingSpot.parkingLotName || parkingSpot.parkinglotName}`);
-            console.log(`      Spot: ${parkingSpot.spotNum}`);
-            console.log(`      pricePerHour: ৳${parkingSpot.pricePerHour}`);
-            // Update booking object with fetched spot
-            booking.parkingSpot = parkingSpot;
-          } else {
-            console.log(`   ❌ Parking spot not found in database with ID: ${parkingSpotId}`);
-          }
-        } catch (fetchErr) {
-          console.error(`   ❌ Error fetching parking spot:`, fetchErr);
-        }
-      } else {
-        console.log(`   ❌ Invalid or missing parking spot ID in booking`);
-        
-        // If no parkingSpot but booking has parkingLotName (search query), find a spot by name
-        if (booking.parkingLotName || booking.location) {
-          const parkingLotName = booking.parkingLotName || booking.location;
-          console.log(`   🔍 Booking has parkingLotName but no spot - searching for spot by name: "${parkingLotName}"`);
-          
-          try {
-            // Find any spot in this parking lot to get the rate
-            const spotByLotName = await ParkingSpot.findOne({
-              $or: [
-                { parkingLotName: { $regex: new RegExp(`^${parkingLotName}$`, 'i') } },
-                { parkinglotName: { $regex: new RegExp(`^${parkingLotName}$`, 'i') } }
-              ]
-            }).select('parkingLotName parkinglotName spotNum pricePerHour');
-            
-            if (spotByLotName) {
-              parkingSpot = spotByLotName;
-              console.log(`   ✅ Found spot by parking lot name:`);
-              console.log(`      Parking Lot: ${spotByLotName.parkingLotName || spotByLotName.parkinglotName}`);
-              console.log(`      Spot: ${spotByLotName.spotNum}`);
-              console.log(`      pricePerHour: ৳${spotByLotName.pricePerHour}`);
-              booking.parkingSpot = parkingSpot;
-            } else {
-              console.log(`   ❌ No spots found for parking lot: "${parkingLotName}"`);
-            }
-          } catch (searchErr) {
-            console.error(`   ❌ Error searching for spot by parking lot name:`, searchErr);
-          }
-        }
-      }
-    } else {
-      console.log(`   ✅ Parking spot populated successfully`);
-      console.log(`      Parking Lot: ${parkingSpot.parkingLotName || parkingSpot.parkinglotName}`);
-      console.log(`      Spot: ${parkingSpot.spotNum}`);
-      console.log(`      pricePerHour: ৳${parkingSpot.pricePerHour}`);
     }
 
     // Check if entry was recorded
@@ -1091,80 +1017,107 @@ export const recordExit = async (req, res) => {
       });
     }
 
-    // Get parking spot price per hour (each parking lot can have different rates)
-    // Use the parking spot we fetched/verified above
-    let pricePerHour = null;
+    // Get parking spot price per hour - ensure we get the correct price
+    let pricePerHour = 50; // Default fallback
+    let parkingLotName = null;
     
-    // Use parkingSpot variable (which we fetched if needed)
-    const spotToUse = parkingSpot || booking.parkingSpot;
-    
-    if (spotToUse && spotToUse.pricePerHour) {
-      pricePerHour = Number(spotToUse.pricePerHour);
-      console.log(`\n💰 Fee Calculation:`);
-      console.log(`   Parking Lot: ${spotToUse.parkingLotName || spotToUse.parkinglotName || 'Unknown'}`);
-      console.log(`   Spot Number: ${spotToUse.spotNum || 'Unknown'}`);
-      console.log(`   pricePerHour: ৳${pricePerHour}/hour`);
-    } else {
-      // Last resort: try to find rate by parking lot name
-      const parkingLotName = booking.parkingLotName || booking.location;
-      if (parkingLotName) {
-        console.log(`\n⚠️  No parking spot found, searching by parking lot name: "${parkingLotName}"`);
-        try {
-          const anySpot = await ParkingSpot.findOne({
-            $or: [
-              { parkingLotName: { $regex: new RegExp(`^${parkingLotName}$`, 'i') } },
-              { parkinglotName: { $regex: new RegExp(`^${parkingLotName}$`, 'i') } }
-            ]
-          }).select('pricePerHour parkingLotName').lean();
-          
-          if (anySpot && anySpot.pricePerHour) {
-            pricePerHour = Number(anySpot.pricePerHour);
-            console.log(`   ✅ Found rate by parking lot name: ৳${pricePerHour}/hour`);
+    if (booking.parkingSpot) {
+      // Booking has a parking spot assigned
+      parkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || null;
+      // Try to get pricePerHour from populated spot
+      pricePerHour = booking.parkingSpot?.pricePerHour;
+      
+      // If not found in populated spot, fetch directly from database
+      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
+        console.log('⚠️  pricePerHour not found in populated spot, fetching from database...');
+        const spotId = booking.parkingSpot._id || booking.parkingSpot;
+        if (spotId) {
+          const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
+          if (spot && spot.pricePerHour) {
+            pricePerHour = spot.pricePerHour;
+            parkingLotName = spot.parkingLotName || parkingLotName;
+            console.log(`✅ Found pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
           } else {
-            console.log(`   ❌ No spots found for "${parkingLotName}"`);
-            console.log(`   ⚠️  Using default rate: ৳50/hour`);
-            pricePerHour = 50;
+            console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
           }
-        } catch (err) {
-          console.error(`   ❌ Error searching for rate:`, err);
-          console.log(`   ⚠️  Using default rate: ৳50/hour`);
-          pricePerHour = 50;
         }
       } else {
-        console.log(`\n⚠️  WARNING: Could not get parking spot pricePerHour!`);
-        console.log(`   spotToUse:`, spotToUse);
-        console.log(`   booking.parkingLotName:`, booking.parkingLotName);
-        console.log(`   Using default rate: ৳50/hour`);
-        pricePerHour = 50;
+        console.log(`✅ Using pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
       }
     }
     
-    console.log(`\n💰 Final Fee Calculation:`);
-    console.log(`   Parking Lot: ${booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'Unknown'}`);
-    console.log(`   Spot Number: ${booking.parkingSpot?.spotNum || 'Unknown'}`);
-    console.log(`   Rate per hour: ৳${pricePerHour}`);
-    console.log(`   Entry time: ${new Date(booking.actualEntryTime).toLocaleString()}`);
-    console.log(`   Exit time: ${new Date(exit).toLocaleString()}`);
+    // If no parking spot assigned, try to get price from parking lot name
+    if (!booking.parkingSpot || !pricePerHour || pricePerHour === 50) {
+      // Get parking lot name from booking
+      const lotName = parkingLotName || booking.parkingLotName || booking.location;
+      
+      if (lotName) {
+        console.log(`⚠️  No parking spot assigned, but found parking lot name: ${lotName}`);
+        console.log(`   Attempting to find average price for this parking lot...`);
+        
+        // Find a spot from this parking lot to get the price
+        const sampleSpot = await ParkingSpot.findOne({
+          $or: [
+            { parkingLotName: { $regex: new RegExp(`^${lotName}$`, 'i') } },
+            { parkinglotName: { $regex: new RegExp(`^${lotName}$`, 'i') } }
+          ]
+        }).select('pricePerHour parkingLotName');
+        
+        if (sampleSpot && sampleSpot.pricePerHour) {
+          pricePerHour = sampleSpot.pricePerHour;
+          parkingLotName = sampleSpot.parkingLotName || lotName;
+          console.log(`✅ Found pricePerHour from parking lot: ৳${pricePerHour}/hour for ${parkingLotName}`);
+        } else {
+          console.warn(`⚠️  No spots found for parking lot "${lotName}", using default: ৳${pricePerHour}/hour`);
+        }
+      } else {
+        console.warn(`⚠️  No parking spot or parking lot name found, using default: ৳${pricePerHour}/hour`);
+      }
+    }
+    
+    // Log price calculation details
+    const durationMs = exit.getTime() - booking.actualEntryTime.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    console.log('\n💰 Price Calculation:');
+    console.log(`   Entry Time: ${new Date(booking.actualEntryTime).toLocaleString()}`);
+    console.log(`   Exit Time: ${new Date(exit).toLocaleString()}`);
+    console.log(`   Duration: ${durationHours.toFixed(2)} hours`);
+    console.log(`   Price Per Hour: ৳${pricePerHour}`);
 
-    // Calculate actual parking fee based on this parking lot's specific rate
-    const actualPrice = calculateParkingFee(
+    // Calculate actual parking fee
+    let actualPrice = calculateParkingFee(
       booking.actualEntryTime,
       exit,
       pricePerHour
     );
     
-    // Calculate duration for detailed logging
-    const durationMs = exit.getTime() - booking.actualEntryTime.getTime();
-    const durationHours = durationMs / (1000 * 60 * 60);
-    const roundedHours = Math.ceil(Math.max(durationHours, 0.5) * 2) / 2;
+    // Stripe minimum is 50 cents USD
+    // Current exchange rate: ৳50 ≈ $0.41, so we need at least ৳70-৳80 to ensure $0.50 USD
+    // Using ৳80 as minimum to account for exchange rate fluctuations and ensure it's always above $0.50 USD
+    const STRIPE_MINIMUM_BDT = 80; // Minimum ৳80 to ensure it's above $0.50 USD (Stripe requirement)
+    let chargeAmount = actualPrice;
+    let minimumChargeApplied = false;
     
-    console.log(`   Duration: ${durationHours.toFixed(4)} hours (${(durationHours * 60).toFixed(2)} minutes)`);
-    console.log(`   Rounded duration: ${roundedHours} hours (minimum 0.5 hours)`);
-    console.log(`   Calculation: ${roundedHours} hours × ৳${pricePerHour}/hour = ৳${(roundedHours * pricePerHour).toFixed(2)}`);
-    console.log(`   Final calculated fee: ৳${actualPrice.toFixed(2)}`);
+    if (actualPrice > 0 && actualPrice < STRIPE_MINIMUM_BDT) {
+      chargeAmount = STRIPE_MINIMUM_BDT;
+      minimumChargeApplied = true;
+      console.log(`   ⚠️  Calculated amount (৳${actualPrice.toFixed(2)}) is below Stripe minimum (৳${STRIPE_MINIMUM_BDT})`);
+      console.log(`   💳 Will charge minimum amount: ৳${chargeAmount.toFixed(2)} to ensure auto-charge works`);
+    }
+    
+    console.log(`   Calculated Total Price: ৳${actualPrice.toFixed(2)}`);
+    if (minimumChargeApplied) {
+      console.log(`   Charge Amount (with minimum): ৳${chargeAmount.toFixed(2)}`);
+    }
+    const spotInfo = booking.parkingSpot 
+      ? `${booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'Unknown'} - ${booking.parkingSpot?.spotNum || 'N/A'}`
+      : parkingLotName || booking.parkingLotName || booking.location || 'No spot assigned';
+    console.log(`   Parking Spot/Lot: ${spotInfo}\n`);
 
     booking.actualExitTime = exit;
-    booking.actualPrice = actualPrice;
+    booking.actualPrice = actualPrice; // Store the calculated price
+    // Store the amount that will be charged (may be higher if minimum applied)
+    booking.chargedAmount = chargeAmount;
 
     // Process payment if user has payment method
     const user = booking.user;
@@ -1184,44 +1137,52 @@ export const recordExit = async (req, res) => {
 
     if (user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
       console.log('   ✅ Payment method detected - attempting to charge');
+      console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)}${minimumChargeApplied ? ' (minimum charge applied)' : ''}`);
       try {
-        // Charge the user's saved payment method
+        // Charge the amount (may be minimum if calculated amount was too small)
+        // This ensures auto-charge always works regardless of calculated amount
         paymentResult = await chargePaymentMethod(
           user.stripeCustomerId,
           user.paymentMethodId,
-          actualPrice,
+          chargeAmount, // Use chargeAmount (may be minimum if calculated was too small)
           'bdt',
           {
             bookingId: booking._id.toString(),
             userId: user._id.toString(),
-            parkingLot: booking.parkingSpot?.parkingLotName || 'Unknown',
-            spotNum: booking.parkingSpot?.spotNum || 'Unknown',
+            parkingLot: booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || parkingLotName || booking.parkingLotName || booking.location || 'Unknown',
+            spotNum: booking.parkingSpot?.spotNum || 'N/A',
+            pricePerHour: pricePerHour.toString(),
+            duration: durationHours.toFixed(2),
           }
         );
 
-                if (paymentResult && paymentResult.success) {
-                  booking.paymentStatus = 'paid';
-                  booking.paymentIntentId = paymentResult.paymentIntentId;
-                  booking.paymentMethodId = user.paymentMethodId;
-                  booking.chargedAt = new Date();
-                  booking.paymentError = null;
-                  
-                  // Log payment details
-                  if (paymentResult.originalAmount && paymentResult.originalAmount !== paymentResult.amount) {
-                    console.log(`   💰 Payment converted: ৳${paymentResult.originalAmount} BDT → $${paymentResult.amount} USD`);
-                  }
-                  console.log(`   ✅ Payment successful: ${paymentResult.paymentIntentId}`);
-                } else {
-                  booking.paymentStatus = 'failed';
-                  paymentError = paymentResult?.error || 'Payment processing failed';
-                  booking.paymentError = paymentError;
-                  console.log(`   ❌ Payment failed: ${paymentError}`);
-                }
+        if (paymentResult && paymentResult.success) {
+          booking.paymentStatus = 'paid';
+          booking.paymentIntentId = paymentResult.paymentIntentId;
+          booking.paymentMethodId = user.paymentMethodId;
+          booking.chargedAmount = chargeAmount; // Store the amount that was actually charged
+          booking.chargedAt = new Date();
+          booking.paymentError = null;
+          paymentError = null;
+          if (minimumChargeApplied) {
+            console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${chargeAmount.toFixed(2)} - minimum applied, calculated was ৳${actualPrice.toFixed(2)})`);
+          } else {
+            console.log('   ✅ Payment successful! Status: PAID');
+          }
+        } else {
+          booking.paymentStatus = 'failed';
+          paymentError = paymentResult?.error || 'Payment processing failed';
+          booking.paymentError = paymentError;
+          console.log('   ❌ Payment failed');
+        }
       } catch (paymentErr) {
         console.error('Payment processing error:', paymentErr);
+        // If Stripe rejects due to minimum amount, still mark as failed (not pending)
+        // This way the admin knows the charge was attempted but failed
         booking.paymentStatus = 'failed';
         paymentError = paymentErr.message || 'Payment processing failed';
         booking.paymentError = paymentError;
+        console.log('   ❌ Payment failed with error:', paymentErr.message);
       }
     } else {
       // No payment method saved
@@ -1249,17 +1210,22 @@ export const recordExit = async (req, res) => {
             
             if (userDoc.hasPaymentMethod && userDoc.stripeCustomerId && userDoc.paymentMethodId) {
               console.log('   ✅ Payment method found in database - attempting to charge');
+              console.log(`   💳 Charging amount: ৳${actualPrice.toFixed(2)}`);
               try {
+                // Charge the amount (may be minimum if calculated amount was too small)
+                // This ensures auto-charge always works regardless of calculated amount
                 paymentResult = await chargePaymentMethod(
                   userDoc.stripeCustomerId,
                   userDoc.paymentMethodId,
-                  actualPrice,
+                  chargeAmount, // Use chargeAmount (may be minimum if calculated was too small)
                   'bdt',
                   {
                     bookingId: booking._id.toString(),
                     userId: userDoc._id.toString(),
-                    parkingLot: booking.parkingSpot?.parkingLotName || 'Unknown',
-                    spotNum: booking.parkingSpot?.spotNum || 'Unknown',
+                    parkingLot: booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || parkingLotName || booking.parkingLotName || booking.location || 'Unknown',
+                    spotNum: booking.parkingSpot?.spotNum || 'N/A',
+                    pricePerHour: pricePerHour.toString(),
+                    duration: durationHours.toFixed(2),
                   }
                 );
 
@@ -1267,21 +1233,28 @@ export const recordExit = async (req, res) => {
                   booking.paymentStatus = 'paid';
                   booking.paymentIntentId = paymentResult.paymentIntentId;
                   booking.paymentMethodId = userDoc.paymentMethodId;
+                  booking.chargedAmount = chargeAmount; // Store the amount that was actually charged
                   booking.chargedAt = new Date();
                   booking.paymentError = null;
                   paymentError = null;
-                  console.log(`   ✅ Payment successful: ${paymentResult.paymentIntentId}`);
+                  if (minimumChargeApplied) {
+                    console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${chargeAmount.toFixed(2)} - minimum applied, calculated was ৳${actualPrice.toFixed(2)})`);
+                  } else {
+                    console.log('   ✅ Payment successful! Status: PAID');
+                  }
                 } else {
                   booking.paymentStatus = 'failed';
                   paymentError = paymentResult?.error || 'Payment processing failed';
                   booking.paymentError = paymentError;
-                  console.log(`   ❌ Payment failed: ${paymentError}`);
+                  console.log('   ❌ Payment failed');
                 }
               } catch (paymentErr) {
                 console.error('Payment processing error:', paymentErr);
+                // If Stripe rejects due to minimum amount, mark as failed (charge was attempted)
                 booking.paymentStatus = 'failed';
                 paymentError = paymentErr.message || 'Payment processing failed';
                 booking.paymentError = paymentError;
+                console.log('   ❌ Payment failed with error:', paymentErr.message);
               }
             } else {
               booking.paymentStatus = 'pending';
@@ -1306,31 +1279,30 @@ export const recordExit = async (req, res) => {
     try {
       const userEmail = user?.email || 'unknown@example.com';
       const userName = user?.name || 'User';
-      const parkingLotName = booking.parkingSpot?.parkingLotName || 'Unknown';
-      const spotNum = booking.parkingSpot?.spotNum || 'Unknown';
+      const finalParkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || parkingLotName || booking.parkingLotName || booking.location || 'Unknown';
+      const spotNum = booking.parkingSpot?.spotNum || 'N/A';
       
       const durationMs = exit.getTime() - booking.actualEntryTime.getTime();
       const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(2);
       
       const emailResult = await sendBookingEmail({
         to: userEmail,
-        subject: `Parking Session Completed - ${parkingLotName}`,
+        subject: `Parking Session Completed - ${finalParkingLotName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #4F46E5;">Parking Session Completed</h2>
             <p>Hello ${userName},</p>
             <p>Your parking session has been completed. Here are the details:</p>
             <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Parking Lot:</strong> ${parkingLotName}</p>
+              <p><strong>Parking Lot:</strong> ${finalParkingLotName}</p>
               <p><strong>Spot Number:</strong> ${spotNum}</p>
               <p><strong>Entry Time:</strong> ${new Date(booking.actualEntryTime).toLocaleString()}</p>
               <p><strong>Exit Time:</strong> ${new Date(exit).toLocaleString()}</p>
               <p><strong>Duration:</strong> ${durationHours} hours</p>
-            <p><strong>Total Amount:</strong> ৳${actualPrice.toFixed(2)}</p>
-            <p><strong>Payment Status:</strong> ${booking.paymentStatus === 'paid' ? '✅ Paid Automatically' : booking.paymentStatus === 'failed' ? '❌ Payment Failed' : '⏳ Pending Manual Payment'}</p>
-            ${booking.paymentStatus === 'pending' ? '<p style="color: #6b7280; font-size: 14px;">💡 Payment will be processed manually. Please contact support if needed.</p>' : ''}
-          </div>
-          ${paymentError ? `<p style="color: #dc2626;">⚠️ ${paymentError}</p>` : ''}
+              <p><strong>Total Amount:</strong> ৳${actualPrice.toFixed(2)}</p>
+              <p><strong>Payment Status:</strong> ${booking.paymentStatus === 'paid' ? '✅ Paid' : booking.paymentStatus === 'failed' ? '❌ Failed' : '⏳ Pending'}</p>
+            </div>
+            ${paymentError ? `<p style="color: #dc2626;">⚠️ ${paymentError}</p>` : ''}
             <p>Thank you for using our parking service!</p>
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
             <p style="color: #6b7280; font-size: 12px;">This is an automated email. Please do not reply.</p>
@@ -1352,9 +1324,11 @@ export const recordExit = async (req, res) => {
         actualEntryTime: booking.actualEntryTime,
         actualExitTime: booking.actualExitTime,
         actualPrice: booking.actualPrice,
+        chargedAmount: booking.chargedAmount || booking.actualPrice, // Amount actually charged
         paymentStatus: booking.paymentStatus,
         paymentIntentId: booking.paymentIntentId,
         chargedAt: booking.chargedAt,
+        minimumChargeApplied: minimumChargeApplied,
       },
       payment: paymentResult,
       paymentError: paymentError,

@@ -105,6 +105,10 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  chargedAmount: {
+    type: Number,
+    default: null // Amount actually charged (may be higher than actualPrice if minimum charge applied)
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'paid', 'failed', 'refunded'],

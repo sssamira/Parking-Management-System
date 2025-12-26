@@ -154,25 +154,45 @@ const AdminBookings = () => {
       const response = await api.post(`/bookings/${bookingId}/exit`);
       const data = response.data;
       
-      let message = 'Exit time recorded successfully!\n\n';
-      message += `Total Amount: ৳${data.booking?.actualPrice?.toFixed(2) || '0.00'}\n`;
+      // Build detailed success message
+      let message = '✅ Exit time recorded successfully!\n\n';
+      message += '📊 Payment Details:\n';
+      message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       
-      // Show accurate payment status
+      const calculatedPrice = data.booking?.actualPrice || 0;
+      const chargedAmount = data.booking?.chargedAmount || calculatedPrice;
+      const minimumApplied = data.booking?.minimumChargeApplied || false;
+      
+      if (minimumApplied && chargedAmount > calculatedPrice) {
+        message += `Calculated Amount: ৳${calculatedPrice.toFixed(2)}\n`;
+        message += `Charged Amount: ৳${chargedAmount.toFixed(2)} (minimum charge applied)\n`;
+      } else {
+        message += `Total Amount: ৳${calculatedPrice.toFixed(2)}\n`;
+      }
+      
       const paymentStatus = data.booking?.paymentStatus || 'pending';
       if (paymentStatus === 'paid') {
-        message += `Payment Status: ✅ Paid (Automatically charged)`;
-        if (data.booking?.chargedAt) {
-          message += `\nCharged at: ${new Date(data.booking.chargedAt).toLocaleString()}`;
+        message += `Payment Status: ✅ PAID (Auto-charged)\n`;
+        if (data.booking?.paymentIntentId) {
+          message += `Payment ID: ${data.booking.paymentIntentId}\n`;
+        }
+        if (minimumApplied) {
+          message += `\n💳 Payment automatically charged from saved card.\n`;
+          message += `ℹ️ Minimum charge (৳50) applied as calculated amount was below Stripe minimum.`;
+        } else {
+          message += `\n💳 Payment was automatically charged from saved payment method.`;
         }
       } else if (paymentStatus === 'failed') {
-        message += `Payment Status: ❌ Failed`;
+        message += `Payment Status: ❌ FAILED\n`;
         if (data.paymentError) {
-          message += `\n\nError: ${data.paymentError}`;
+          message += `Error: ${data.paymentError}\n`;
         }
       } else {
-        message += `Payment Status: ⏳ Pending (Manual payment required)`;
+        message += `Payment Status: ⏳ PENDING\n`;
         if (data.paymentError) {
-          message += `\n\nNote: ${data.paymentError}`;
+          message += `Reason: ${data.paymentError}\n`;
+        } else {
+          message += `(No payment method saved - manual payment required)\n`;
         }
       }
       
@@ -180,7 +200,8 @@ const AdminBookings = () => {
       await fetchPendingBookings();
     } catch (err) {
       console.error('Error recording exit:', err);
-      window.alert(err.response?.data?.message || 'Failed to record exit time');
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to record exit time';
+      window.alert(`❌ Error: ${errorMessage}`);
     } finally {
       setTracking(null);
     }
