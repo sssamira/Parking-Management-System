@@ -175,21 +175,49 @@ const MyBookings = () => {
                     <tr key={booking._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'N/A'}
+                          {booking.parkingSpot?.parkingLotName || 
+                           booking.parkingSpot?.parkinglotName || 
+                           booking.parkingLotName || 
+                           booking.location || 
+                           'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Spot: {booking.parkingSpot?.spotNum || 'N/A'}
+                          {booking.parkingSpot?.spotNum ? (
+                            <>Spot: {booking.parkingSpot.spotNum}</>
+                          ) : (
+                            <>Spot: Not assigned</>
+                          )}
                         </div>
                         {booking.parkingSpot?.floor && (
                           <div className="text-xs text-gray-400">
                             Floor: {booking.parkingSpot.floor}
                           </div>
                         )}
+                        {!booking.parkingSpot && booking.vehicleType && (
+                          <div className="text-xs text-gray-400">
+                            Vehicle: {booking.vehicleType}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">
-                          <div>From: {formatDate(booking.startTime)}</div>
-                          <div>To: {formatDate(booking.endTime)}</div>
+                          {booking.startTime && booking.endTime ? (
+                            <>
+                              <div>From: {formatDate(booking.startTime)}</div>
+                              <div>To: {formatDate(booking.endTime)}</div>
+                            </>
+                          ) : booking.actualEntryTime && booking.actualExitTime ? (
+                            <>
+                              <div>Entry: {formatDate(booking.actualEntryTime)}</div>
+                              <div>Exit: {formatDate(booking.actualExitTime)}</div>
+                            </>
+                          ) : booking.date ? (
+                            <div>Date: {formatDate(booking.date)}</div>
+                          ) : booking.actualEntryTime ? (
+                            <div>Entry: {formatDate(booking.actualEntryTime)}</div>
+                          ) : (
+                            <div className="text-gray-400">Not specified</div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
