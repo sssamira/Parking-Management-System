@@ -200,6 +200,8 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import searchQueryRoutes from './routes/searchQueryRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import adminVehicleRoutes from './routes/adminVehicleRoutes.js';
+import mapRoutes from './routes/mapRoutes.js';
+
 // Middleware to check database connection before processing requests
 // Allow health check and some routes to work even if DB is not connected
 app.use('/api', (req, res, next) => {
@@ -234,6 +236,9 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/search-queries', searchQueryRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin/vehicle', adminVehicleRoutes);
+app.use('/api/map', mapRoutes);
+
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
