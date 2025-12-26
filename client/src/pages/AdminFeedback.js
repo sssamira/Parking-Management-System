@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api'; // Import the Axios instance
 
 const AdminFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -13,29 +14,27 @@ const AdminFeedback = () => {
   const fetchAllFeedback = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      // CORRECTED: Changed from '/api/feedback/all' to '/api/feedback'
-      const response = await fetch('/api/feedback', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-  
+      // Use Axios instead of fetch
+      const response = await api.get('/feedback');
+      
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
+      
+      // Handle authorization errors
       if (response.status === 401 || response.status === 403) {
         setError('You are not authorized to view all feedback. Admin access required.');
         setLoading(false);
         return;
       }
-  
-      if (!response.ok) {
-        throw new Error('Failed to load feedback');
-      }
-  
-      const data = await response.json();
+
       setFeedbacks(data.data || []);
     } catch (err) {
-      setError(err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to load feedback';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -44,20 +43,11 @@ const AdminFeedback = () => {
 
   const handleUpdateStatus = async (id, isResolved) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/feedback/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isResolved })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
+      // Use Axios instead of fetch
+      const response = await api.put(`/feedback/${id}`, { isResolved });
+      
+      // No need to check response.ok, Axios throws for non-2xx
+      
       // Update local state
       setFeedbacks(prev => 
         prev.map(fb => 
@@ -67,8 +57,12 @@ const AdminFeedback = () => {
       
       alert(`Feedback marked as ${isResolved ? 'Resolved' : 'Pending'}`);
     } catch (err) {
+      // Axios error handling
       console.error('Error updating status:', err);
-      alert('Failed to update status');
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to update status';
+      alert('Failed to update status: ' + errorMessage);
     }
   };
 

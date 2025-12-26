@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import api from '../utils/api'; // Import the Axios instance
 
 // Fix for Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -51,8 +52,11 @@ const LiveMap = () => {
 
   const fetchParkingLots = async () => {
     try {
-      const response = await fetch("/api/map/parking-lots");
-      const data = await response.json();
+      // Use Axios instead of fetch
+      const response = await api.get("/map/parking-lots");
+      
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
       
       if (data.success) {
         setParkingLots(data.data);
