@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, calculateParkingFee } from '../utils/payment.js';
+import Offer from '../models/Offer.js';
 
 // Build a mail transporter if SMTP env vars are set (lazy initialization)
 let _transporterInstance = null;
@@ -179,6 +180,62 @@ const sendBookingEmail = async ({ to, subject, html }) => {
   }
 };
 
+const normalizeLotName = (name = '') => name.trim().toLowerCase();
+
+const findActiveOfferForLot = async (parkingLotName, referenceDate) => {
+  if (!parkingLotName) {
+    return null;
+  }
+
+  const normalizedName = normalizeLotName(parkingLotName);
+  if (!normalizedName) {
+    return null;
+  }
+
+  const date = referenceDate instanceof Date ? referenceDate : new Date(referenceDate || Date.now());
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return Offer.findOne({
+    normalizedParkingLotName: normalizedName,
+    startDate: { $lte: date },
+    endDate: { $gte: date },
+    isActive: true,
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+};
+
+const applyOfferToRate = (baseRate, offerDoc) => {
+  if (!offerDoc) {
+    return { rate: baseRate, offerData: null };
+  }
+
+  let adjustedRate = baseRate;
+
+  if (typeof offerDoc.offerPercentage === 'number' && offerDoc.offerPercentage > 0) {
+    adjustedRate = Number((adjustedRate * (1 - offerDoc.offerPercentage / 100)).toFixed(2));
+  }
+
+  if (typeof offerDoc.priceAfterOffer === 'number') {
+    adjustedRate = Number(offerDoc.priceAfterOffer);
+  }
+
+  if (!Number.isFinite(adjustedRate) || adjustedRate < 0) {
+    adjustedRate = 0;
+  }
+
+  return {
+    rate: adjustedRate,
+    offerData: {
+      offerId: offerDoc._id,
+      offerPercentage: typeof offerDoc.offerPercentage === 'number' ? offerDoc.offerPercentage : null,
+      priceAfterOffer: typeof offerDoc.priceAfterOffer === 'number' ? offerDoc.priceAfterOffer : null,
+    },
+  };
+};
+
 // Helper: check overlap
 const hasOverlap = async ({ spotId, startTime, endTime, excludeBookingId = null }) => {
   try {
@@ -267,10 +324,24 @@ export const createBooking = async (req, res) => {
       });
     })();
     const mult = hasSurge ? 1 + surgePercent/100 : 1;
-    const effectiveRate = Number(((spot.pricePerHour || 0) * mult).toFixed(2));
-    const price = priceOverride !== undefined
-      ? Number(priceOverride)
-      : Number((durationHours * effectiveRate).toFixed(2));
+    let effectiveRate = Number(((spot.pricePerHour || 0) * mult).toFixed(2));
+    let offerMetadata = null;
+
+    if (priceOverride === undefined) {
+      const lotNameForOffer = spot.parkingLotName || spot.parkinglotName;
+      const activeOffer = await findActiveOfferForLot(lotNameForOffer, start);
+      if (activeOffer) {
+        const { rate, offerData } = applyOfferToRate(effectiveRate, activeOffer);
+        effectiveRate = rate;
+        offerMetadata = offerData;
+      }
+    }
+
+    const computedPrice = Number((durationHours * effectiveRate).toFixed(2));
+    const appliedPrice = priceOverride !== undefined ? Number(priceOverride) : computedPrice;
+    const effectiveRateForStorage = priceOverride !== undefined
+      ? Number((Number(priceOverride) / durationHours).toFixed(2))
+      : effectiveRate;
 
     const booking = await Booking.create({
       parkingSpot: spot._id,
@@ -282,7 +353,11 @@ export const createBooking = async (req, res) => {
       startTime: start,
       endTime: end,
       status: 'pending', // Set status to 'pending' - needs admin approval
-      price,
+      price: appliedPrice,
+      effectivePricePerHour: effectiveRateForStorage,
+      offerId: offerMetadata?.offerId || null,
+      offerPercentage: offerMetadata?.offerPercentage ?? null,
+      priceAfterOffer: offerMetadata?.priceAfterOffer ?? null,
     });
 
     return res.status(201).json({
@@ -1018,31 +1093,36 @@ export const recordExit = async (req, res) => {
     }
 
     // Get parking spot price per hour - ensure we get the correct price
-    let pricePerHour = 50; // Default fallback
+    let pricePerHour = booking.effectivePricePerHour || 50; // Default fallback (overridden below if needed)
     let parkingLotName = null;
-    
+
     if (booking.parkingSpot) {
       // Booking has a parking spot assigned
       parkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || null;
-      // Try to get pricePerHour from populated spot
-      pricePerHour = booking.parkingSpot?.pricePerHour;
-      
-      // If not found in populated spot, fetch directly from database
-      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
-        console.log('⚠️  pricePerHour not found in populated spot, fetching from database...');
-        const spotId = booking.parkingSpot._id || booking.parkingSpot;
-        if (spotId) {
-          const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
-          if (spot && spot.pricePerHour) {
-            pricePerHour = spot.pricePerHour;
-            parkingLotName = spot.parkingLotName || parkingLotName;
-            console.log(`✅ Found pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
-          } else {
-            console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
+
+      if (!booking.effectivePricePerHour) {
+        // Try to get pricePerHour from populated spot when no stored rate is available
+        pricePerHour = booking.parkingSpot?.pricePerHour;
+
+        // If not found in populated spot, fetch directly from database
+        if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
+          console.log('⚠️  pricePerHour not found in populated spot, fetching from database...');
+          const spotId = booking.parkingSpot._id || booking.parkingSpot;
+
+          if (spotId) {
+            const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
+
+            if (spot && spot.pricePerHour) {
+              pricePerHour = spot.pricePerHour;
+              parkingLotName = spot.parkingLotName || parkingLotName;
+              console.log(`✅ Found pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
+            } else {
+              console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
+            }
           }
+        } else {
+          console.log(`✅ Using pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
         }
-      } else {
-        console.log(`✅ Using pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
       }
     }
     

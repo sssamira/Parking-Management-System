@@ -38,6 +38,23 @@ const bookingSchema = new mongoose.Schema({
     required: false,
     default: 0
   },
+  effectivePricePerHour: {
+    type: Number,
+    default: null,
+  },
+  offerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Offer',
+    default: null,
+  },
+  offerPercentage: {
+    type: Number,
+    default: null,
+  },
+  priceAfterOffer: {
+    type: Number,
+    default: null,
+  },
   // Search query details
   parkingLotName: {
     type: String,
@@ -77,6 +94,18 @@ const bookingSchema = new mongoose.Schema({
   },
   emailError: {
     type: String
+  },
+  reminderEmailSent: {
+    type: Boolean,
+    default: false
+  },
+  reminderEmailSentAt: {
+    type: Date,
+    default: null
+  },
+  reminderEmailError: {
+    type: String,
+    default: null
   },
   paidUntil: { 
     type: Date,

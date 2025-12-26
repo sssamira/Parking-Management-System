@@ -442,6 +442,22 @@ const Homepage = () => {
             </Link>
           )}
 
+          {/* Admin Only - Offer Management Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/add-offer"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(236,72,153,0.35)] p-8 border border-pink-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(236,72,153,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-pink-100 text-pink-600 text-3xl mb-4">
+                🎟️
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Create Parking Offers</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Launch promotional rates for any parking lot and boost occupancy during key hours.
+              </p>
+            </Link>
+          )}
+
           {/* Admin Only - Approve Bookings Card */}
           {user && user.role === 'admin' && (
             <Link
