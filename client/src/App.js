@@ -17,6 +17,7 @@ import Chat from './pages/Chat';
 import AdminChat from './pages/AdminChat';
 import PaymentMethod from './pages/PaymentMethod';
 import MyBookings from './pages/MyBookings';
+import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
 
@@ -123,6 +124,7 @@ function App() {
             <Route path="/admin/chat" element={<AdminChat />} />
             <Route path="/payment-method" element={<PaymentMethod />} />
             <Route path="/my-bookings" element={<MyBookings />} />
+            <Route path="/admin/add-offer" element={<AddOffer />} />
             <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
             <Route path="/live-map" element={<LiveMap />} />
           </Routes>

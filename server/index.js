@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import startBookingReminderJob from './jobs/checkBookingExpirations.js';
 
 // Get current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -200,6 +201,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import searchQueryRoutes from './routes/searchQueryRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import adminVehicleRoutes from './routes/adminVehicleRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
 import mapRoutes from './routes/mapRoutes.js';
 
 // Middleware to check database connection before processing requests
@@ -236,6 +238,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/search-queries', searchQueryRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin/vehicle', adminVehicleRoutes);
+app.use('/api/offers', offerRoutes);
 app.use('/api/map', mapRoutes);
 
 
@@ -302,6 +305,5 @@ const startServer = async () => {
 startServer();
 
 // Start scheduled jobs
-// import checkBookingExpirations from './jobs/checkBookingExpirations.js';
-// checkBookingExpirations();
+startBookingReminderJob();
 
