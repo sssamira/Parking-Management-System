@@ -154,25 +154,45 @@ const AdminBookings = () => {
       const response = await api.post(`/bookings/${bookingId}/exit`);
       const data = response.data;
       
-      let message = 'Exit time recorded successfully!\n\n';
-      message += `Total Amount: ৳${data.booking?.actualPrice?.toFixed(2) || '0.00'}\n`;
+      // Build detailed success message
+      let message = '✅ Exit time recorded successfully!\n\n';
+      message += '📊 Payment Details:\n';
+      message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       
-      // Show accurate payment status
+      const calculatedPrice = data.booking?.actualPrice || 0;
+      const chargedAmount = data.booking?.chargedAmount || calculatedPrice;
+      const minimumApplied = data.booking?.minimumChargeApplied || false;
+      
+      if (minimumApplied && chargedAmount > calculatedPrice) {
+        message += `Calculated Amount: ৳${calculatedPrice.toFixed(2)}\n`;
+        message += `Charged Amount: ৳${chargedAmount.toFixed(2)} (minimum charge applied)\n`;
+      } else {
+        message += `Total Amount: ৳${calculatedPrice.toFixed(2)}\n`;
+      }
+      
       const paymentStatus = data.booking?.paymentStatus || 'pending';
       if (paymentStatus === 'paid') {
-        message += `Payment Status: ✅ Paid (Automatically charged)`;
-        if (data.booking?.chargedAt) {
-          message += `\nCharged at: ${new Date(data.booking.chargedAt).toLocaleString()}`;
+        message += `Payment Status: ✅ PAID (Auto-charged)\n`;
+        if (data.booking?.paymentIntentId) {
+          message += `Payment ID: ${data.booking.paymentIntentId}\n`;
+        }
+        if (minimumApplied) {
+          message += `\n💳 Payment automatically charged from saved card.\n`;
+          message += `ℹ️ Minimum charge (৳50) applied as calculated amount was below Stripe minimum.`;
+        } else {
+          message += `\n💳 Payment was automatically charged from saved payment method.`;
         }
       } else if (paymentStatus === 'failed') {
-        message += `Payment Status: ❌ Failed`;
+        message += `Payment Status: ❌ FAILED\n`;
         if (data.paymentError) {
-          message += `\n\nError: ${data.paymentError}`;
+          message += `Error: ${data.paymentError}\n`;
         }
       } else {
-        message += `Payment Status: ⏳ Pending (Manual payment required)`;
+        message += `Payment Status: ⏳ PENDING\n`;
         if (data.paymentError) {
-          message += `\n\nNote: ${data.paymentError}`;
+          message += `Reason: ${data.paymentError}\n`;
+        } else {
+          message += `(No payment method saved - manual payment required)\n`;
         }
       }
       
@@ -180,7 +200,8 @@ const AdminBookings = () => {
       await fetchPendingBookings();
     } catch (err) {
       console.error('Error recording exit:', err);
-      window.alert(err.response?.data?.message || 'Failed to record exit time');
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to record exit time';
+      window.alert(`❌ Error: ${errorMessage}`);
     } finally {
       setTracking(null);
     }
@@ -284,23 +305,39 @@ const AdminBookings = () => {
                           {isSearchQuery ? (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                Parking Lot Name: {booking.parkingLotName || booking.location || 'N/A'}
+                                Parking Lot Name: {booking.parkingLotName || booking.location || 'Not specified'}
                               </div>
                               <div className="text-xs text-gray-500">
-                                Vehicle Type: {booking.vehicleType || 'N/A'}
+                                Vehicle Type: {booking.vehicleType || 'Not specified'}
                               </div>
+                              {booking.parkingLotName || booking.location ? (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  Search request for this parking lot
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {booking.parkingSpot?.area || 'N/A'}
+                                {booking.parkingSpot?.parkingLotName || 
+                                 booking.parkingSpot?.parkinglotName || 
+                                 booking.parkingLotName || 
+                                 booking.location || 
+                                 'Not assigned'}
                               </div>
                               <div className="text-sm text-gray-500">
-                                Spot: {booking.parkingSpot?.spotNum || 'N/A'}
+                                Spot: {booking.parkingSpot?.spotNum || 'Not assigned'}
                               </div>
-                              <div className="text-xs text-gray-400">
-                                {booking.parkingSpot?.parkingLotName || 'N/A'}
-                              </div>
+                              {booking.parkingSpot?.location && (
+                                <div className="text-xs text-gray-400">
+                                  Area: {booking.parkingSpot.location}
+                                </div>
+                              )}
+                              {booking.parkingSpot?.floor && (
+                                <div className="text-xs text-gray-400">
+                                  Floor: {booking.parkingSpot.floor}
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -310,20 +347,30 @@ const AdminBookings = () => {
                               <div>From: {new Date(booking.startTime).toLocaleString()}</div>
                               <div>To: {new Date(booking.endTime).toLocaleString()}</div>
                             </div>
+                          ) : booking.actualEntryTime && booking.actualExitTime ? (
+                            <div className="text-sm text-gray-900">
+                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
+                              <div>Exit: {new Date(booking.actualExitTime).toLocaleString()}</div>
+                            </div>
+                          ) : booking.actualEntryTime ? (
+                            <div className="text-sm text-gray-900">
+                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
+                              <div className="text-xs text-gray-400">Exit: Not recorded</div>
+                            </div>
                           ) : booking.date ? (
                             <div className="text-sm text-gray-900">
                               Date: {new Date(booking.date).toLocaleDateString()}
                             </div>
                           ) : (
-                            <div className="text-sm text-gray-500">N/A</div>
+                            <div className="text-sm text-gray-500">Not specified</div>
                           )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
-                            Type: {booking.vehicle?.carType || booking.vehicleType || 'N/A'}
+                            Type: {booking.vehicle?.carType || booking.vehicleType || 'Not specified'}
                           </div>
                           <div className="text-xs text-gray-500">
-                            License: {booking.vehicle?.licensePlate || booking.licenseNumber || 'N/A'}
+                            License: {booking.vehicle?.licensePlate || booking.licenseNumber || 'Not specified'}
                           </div>
                           {booking.carModel && (
                             <div className="text-xs text-gray-400">
@@ -333,6 +380,11 @@ const AdminBookings = () => {
                           {booking.driverName && (
                             <div className="text-xs text-gray-400">
                               Driver: {booking.driverName}
+                            </div>
+                          )}
+                          {!booking.carModel && !booking.driverName && !booking.vehicle?.carType && !booking.vehicleType && (
+                            <div className="text-xs text-gray-400 italic">
+                              No additional vehicle details
                             </div>
                           )}
                         </td>
