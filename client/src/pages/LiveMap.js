@@ -51,7 +51,7 @@ const LiveMap = () => {
 
   const fetchParkingLots = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/map/parking-lots");
+      const response = await fetch("/api/map/parking-lots");
       const data = await response.json();
       
       if (data.success) {

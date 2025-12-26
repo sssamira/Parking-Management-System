@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api'; // Import the Axios instance
 
 const AdminFines = () => {
   const [fines, setFines] = useState([]);
@@ -16,22 +17,19 @@ const AdminFines = () => {
   const fetchFines = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:3001/api/fines', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load fines');
-      }
-
-      const data = await response.json();
+      // Use Axios instead of fetch
+      const response = await api.get('/fines');
+      
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
       setFines(data.data || []);
     } catch (err) {
-      setError(err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to load fines';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -41,23 +39,20 @@ const AdminFines = () => {
   const checkOvertimeVehicles = async () => {
     try {
       setCheckingOvertime(true);
-      const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:3001/api/fines/overtime-check', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to check overtime vehicles');
-      }
-
-      const data = await response.json();
+      // Use Axios instead of fetch
+      const response = await api.get('/fines/overtime-check');
+      
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
       setOvertimeResult(data);
       await fetchFines(); // Refresh fines list
     } catch (err) {
-      setError(err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to check overtime vehicles';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setCheckingOvertime(false);
@@ -69,23 +64,18 @@ const AdminFines = () => {
     if (!window.confirm('Mark this fine as paid?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/fines/${fineId}/pay`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update fine');
-      }
-
+      // Use Axios instead of fetch
+      const response = await api.put(`/fines/${fineId}/pay`);
+      
+      // No need to check response.ok, Axios throws for non-2xx
       alert('Fine marked as paid');
       fetchFines(); // Refresh list
     } catch (err) {
-      alert('Failed to update fine: ' + err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to update fine';
+      alert(`Failed to update fine: ${errorMessage}`);
     }
   };
 
@@ -93,23 +83,18 @@ const AdminFines = () => {
     if (!window.confirm('Waive this fine?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/fines/${fineId}/waive`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to waive fine');
-      }
-
+      // Use Axios instead of fetch
+      const response = await api.put(`/fines/${fineId}/waive`);
+      
+      // No need to check response.ok, Axios throws for non-2xx
       alert('Fine waived');
       fetchFines(); // Refresh list
     } catch (err) {
-      alert('Failed to waive fine: ' + err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to waive fine';
+      alert(`Failed to waive fine: ${errorMessage}`);
     }
   };
 

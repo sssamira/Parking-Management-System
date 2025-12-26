@@ -16,7 +16,7 @@ const AdminFeedback = () => {
       const token = localStorage.getItem('token');
       
       // CORRECTED: Changed from '/api/feedback/all' to '/api/feedback'
-      const response = await fetch('http://localhost:3001/api/feedback', {
+      const response = await fetch('/api/feedback', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

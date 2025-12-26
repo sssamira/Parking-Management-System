@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import  api  from '../utils/api';
 
 const MyFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -18,20 +19,15 @@ const MyFeedback = () => {
         throw new Error('You must be logged in to view feedback');
       }
 
-      const response = await fetch('http://localhost:3001/api/feedback/my', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/feedback/my');
+      const data = response.data;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch feedback');
-      }
-
-      const data = await response.json();
-      setFeedbacks(data.data || []);
+      setFeedbacks(data.data || data || []);
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to fetch feedback';
+      setError(errorMessage);
       console.error('Error fetching feedback:', err);
     } finally {
       setLoading(false);

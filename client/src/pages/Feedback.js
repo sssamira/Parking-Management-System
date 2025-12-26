@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import  api  from '../utils/api';
 
 const Feedback = () => {
   const [formData, setFormData] = useState({
@@ -21,16 +22,8 @@ const Feedback = () => {
         throw new Error('You must be logged in to submit feedback. Please login first.');
       }
 
-      const response = await fetch('http://localhost:3001/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
+      const response = await api.post('/feedback', formData);
+      const data = response.data
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to submit feedback');
@@ -45,7 +38,10 @@ const Feedback = () => {
         category: 'Experience'
       });
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to submit feedback';
+      setError(errorMessage);
       console.error('Feedback submission error:', err);
     } finally {
       setLoading(false);

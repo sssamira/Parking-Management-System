@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import api from '../utils/api'; // Import the Axios instance
 
 const AdminVehicleLookup = () => {
   const [searchType, setSearchType] = useState("licensePlate");
@@ -20,28 +21,23 @@ const AdminVehicleLookup = () => {
     setResults(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3001/api/admin/vehicle/vehicle-lookup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          searchType,
-          searchValue: searchValue.trim()
-        })
+      // Use Axios instead of fetch
+      const response = await api.post("/admin/vehicle/vehicle-lookup", {
+        searchType,
+        searchValue: searchValue.trim()
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Search failed");
-      }
-
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
+      
+      // No need to check response.ok, Axios throws for non-2xx
       setResults(data.data);
     } catch (err) {
-      setError(err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          "Search failed";
+      setError(errorMessage);
       console.error("Search error:", err);
     } finally {
       setLoading(false);

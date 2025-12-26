@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api'; // Import the Axios instance
 
 const UserFines = () => {
   const [fines, setFines] = useState([]);
@@ -23,38 +24,23 @@ const UserFines = () => {
   const fetchUserFines = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
       // Fetch user profile to check payment method status
       try {
-        const userResponse = await fetch('http://localhost:3001/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
-          // Update localStorage with latest user data
-          localStorage.setItem('user', JSON.stringify(userData));
-        }
+        const userResponse = await api.get('/auth/me');
+        const userData = userResponse.data;
+        setUser(userData);
+        // Update localStorage with latest user data
+        localStorage.setItem('user', JSON.stringify(userData));
       } catch (userError) {
         console.error('Error fetching user data:', userError);
       }
   
-      // Fetch fines
-      const response = await fetch('http://localhost:3001/api/fines/my-fines', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to load fines');
-      }
-  
-      const data = await response.json();
+      // Fetch fines using Axios
+      const response = await api.get('/fines/my-fines');
+      
+      // Axios automatically parses JSON, no .json() needed
+      const data = response.data;
       setFines(data.data || []);
       
       // Calculate total unpaid
@@ -63,7 +49,11 @@ const UserFines = () => {
         .reduce((sum, fine) => sum + fine.fineAmount, 0);
       setTotalUnpaid(unpaid);
     } catch (err) {
-      setError(err.message);
+      // Axios error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to load fines';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -71,22 +61,13 @@ const UserFines = () => {
   };
 
   const handlePayFine = async (fineId) => {
-  if (!window.confirm('Are you sure you want to pay this fine? This will charge your saved payment method.')) return;
+    if (!window.confirm('Are you sure you want to pay this fine? This will charge your saved payment method.')) return;
 
-  try {
-    const token = localStorage.getItem('token');
-    
-    const response = await fetch(`http://localhost:3001/api/fines/${fineId}/pay-by-user`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
+    try {
+      // Use Axios instead of fetch
+      const response = await api.put(`/fines/${fineId}/pay-by-user`);
+      const data = response.data;
+      
       // Check if error is due to missing payment method
       if (data.requiresPaymentSetup) {
         const shouldSetup = window.confirm(
@@ -97,15 +78,17 @@ const UserFines = () => {
         }
         return;
       }
-      throw new Error(data.message || 'Failed to process payment');
-    }
 
-    alert('✅ Fine paid successfully! Payment has been processed through your saved payment method.');
-    fetchUserFines(); // Refresh fines list
-  } catch (err) {
-    console.error('Payment error:', err);
-    alert('❌ Failed to pay fine: ' + err.message);
-  }
+      alert('✅ Fine paid successfully! Payment has been processed through your saved payment method.');
+      fetchUserFines(); // Refresh fines list
+    } catch (err) {
+      // Axios error handling
+      console.error('Payment error:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          'Failed to process payment';
+      alert('❌ Failed to pay fine: ' + errorMessage);
+    }
   };
 
   const formatDate = (dateString) => {
