@@ -305,23 +305,39 @@ const AdminBookings = () => {
                           {isSearchQuery ? (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                Parking Lot Name: {booking.parkingLotName || booking.location || 'N/A'}
+                                Parking Lot Name: {booking.parkingLotName || booking.location || 'Not specified'}
                               </div>
                               <div className="text-xs text-gray-500">
-                                Vehicle Type: {booking.vehicleType || 'N/A'}
+                                Vehicle Type: {booking.vehicleType || 'Not specified'}
                               </div>
+                              {booking.parkingLotName || booking.location ? (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  Search request for this parking lot
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {booking.parkingSpot?.area || 'N/A'}
+                                {booking.parkingSpot?.parkingLotName || 
+                                 booking.parkingSpot?.parkinglotName || 
+                                 booking.parkingLotName || 
+                                 booking.location || 
+                                 'Not assigned'}
                               </div>
                               <div className="text-sm text-gray-500">
-                                Spot: {booking.parkingSpot?.spotNum || 'N/A'}
+                                Spot: {booking.parkingSpot?.spotNum || 'Not assigned'}
                               </div>
-                              <div className="text-xs text-gray-400">
-                                {booking.parkingSpot?.parkingLotName || 'N/A'}
-                              </div>
+                              {booking.parkingSpot?.location && (
+                                <div className="text-xs text-gray-400">
+                                  Area: {booking.parkingSpot.location}
+                                </div>
+                              )}
+                              {booking.parkingSpot?.floor && (
+                                <div className="text-xs text-gray-400">
+                                  Floor: {booking.parkingSpot.floor}
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -331,20 +347,30 @@ const AdminBookings = () => {
                               <div>From: {new Date(booking.startTime).toLocaleString()}</div>
                               <div>To: {new Date(booking.endTime).toLocaleString()}</div>
                             </div>
+                          ) : booking.actualEntryTime && booking.actualExitTime ? (
+                            <div className="text-sm text-gray-900">
+                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
+                              <div>Exit: {new Date(booking.actualExitTime).toLocaleString()}</div>
+                            </div>
+                          ) : booking.actualEntryTime ? (
+                            <div className="text-sm text-gray-900">
+                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
+                              <div className="text-xs text-gray-400">Exit: Not recorded</div>
+                            </div>
                           ) : booking.date ? (
                             <div className="text-sm text-gray-900">
                               Date: {new Date(booking.date).toLocaleDateString()}
                             </div>
                           ) : (
-                            <div className="text-sm text-gray-500">N/A</div>
+                            <div className="text-sm text-gray-500">Not specified</div>
                           )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
-                            Type: {booking.vehicle?.carType || booking.vehicleType || 'N/A'}
+                            Type: {booking.vehicle?.carType || booking.vehicleType || 'Not specified'}
                           </div>
                           <div className="text-xs text-gray-500">
-                            License: {booking.vehicle?.licensePlate || booking.licenseNumber || 'N/A'}
+                            License: {booking.vehicle?.licensePlate || booking.licenseNumber || 'Not specified'}
                           </div>
                           {booking.carModel && (
                             <div className="text-xs text-gray-400">
@@ -354,6 +380,11 @@ const AdminBookings = () => {
                           {booking.driverName && (
                             <div className="text-xs text-gray-400">
                               Driver: {booking.driverName}
+                            </div>
+                          )}
+                          {!booking.carModel && !booking.driverName && !booking.vehicle?.carType && !booking.vehicleType && (
+                            <div className="text-xs text-gray-400 italic">
+                              No additional vehicle details
                             </div>
                           )}
                         </td>
