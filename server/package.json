@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "seed": "node scripts/init-database.js",
+    "setup": "npm run seed && npm start"
   },
   "keywords": [
     "express",
