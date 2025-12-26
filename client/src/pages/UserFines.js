@@ -25,16 +25,35 @@ const UserFines = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Fetch user profile to check payment method status
+      try {
+        const userResponse = await fetch('http://localhost:3001/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser(userData);
+          // Update localStorage with latest user data
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
+      } catch (userError) {
+        console.error('Error fetching user data:', userError);
+      }
+  
+      // Fetch fines
       const response = await fetch('http://localhost:3001/api/fines/my-fines', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to load fines');
       }
-
+  
       const data = await response.json();
       setFines(data.data || []);
       
@@ -52,27 +71,41 @@ const UserFines = () => {
   };
 
   const handlePayFine = async (fineId) => {
-    if (!window.confirm('Are you sure you want to pay this fine?')) return;
+  if (!window.confirm('Are you sure you want to pay this fine? This will charge your saved payment method.')) return;
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/fines/${fineId}/pay-by-user`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to pay fine');
+  try {
+    const token = localStorage.getItem('token');
+    
+    const response = await fetch(`http://localhost:3001/api/fines/${fineId}/pay-by-user`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
+    });
 
-      alert('Fine paid successfully!');
-      fetchUserFines(); // Refresh list
-    } catch (err) {
-      alert('Failed to pay fine: ' + err.message);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      // Check if error is due to missing payment method
+      if (data.requiresPaymentSetup) {
+        const shouldSetup = window.confirm(
+          'No payment method found. You need to set up a payment method to pay fines. Would you like to set it up now?'
+        );
+        if (shouldSetup) {
+          window.location.href = '/payment-method';
+        }
+        return;
+      }
+      throw new Error(data.message || 'Failed to process payment');
     }
+
+    alert('✅ Fine paid successfully! Payment has been processed through your saved payment method.');
+    fetchUserFines(); // Refresh fines list
+  } catch (err) {
+    console.error('Payment error:', err);
+    alert('❌ Failed to pay fine: ' + err.message);
+  }
   };
 
   const formatDate = (dateString) => {
@@ -153,6 +186,26 @@ const UserFines = () => {
           {error && (
             <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
               {error}
+            </div>
+          )}
+          
+          {/* ADD THIS: Payment Method Warning */}
+          {user && !user.hasPaymentMethod && fines.filter(f => !f.isPaid && f.status !== 'waived').length > 0 && (
+            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">💳</span>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-semibold text-yellow-800">Payment Method Required</h3>
+                  <p className="text-yellow-700">
+                    You need to set up a payment method to pay your fines. 
+                    <Link to="/payment-method" className="ml-1 font-semibold text-yellow-900 underline">
+                      Set up payment method →
+                    </Link>
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

@@ -53,6 +53,32 @@ const fineSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'issued', 'paid', 'waived'],
     default: 'pending'
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['card', 'cash', 'bank_transfer', 'mobile_banking'],
+    default: 'card'
+  },
+  transactionId: {
+    type: String,
+    default: null
+  },
+  paymentIntentId: {
+    type: String,
+    default: null
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  stripeCustomerId: {
+    type: String,
+    default: null
+  },
+  paymentMethodId: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
