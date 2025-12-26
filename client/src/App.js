@@ -18,6 +18,7 @@ import AdminChat from './pages/AdminChat';
 import PaymentMethod from './pages/PaymentMethod';
 import MyBookings from './pages/MyBookings';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
+import LiveMap from './pages/LiveMap';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -123,6 +124,7 @@ function App() {
             <Route path="/payment-method" element={<PaymentMethod />} />
             <Route path="/my-bookings" element={<MyBookings />} />
             <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
+            <Route path="/live-map" element={<LiveMap />} />
           </Routes>
         </div>
       </div>
