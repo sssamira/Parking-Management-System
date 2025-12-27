@@ -271,10 +271,8 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { parkingSpotId, startTime, endTime, vehicle, priceOverride } = req.body;
-    if (!parkingSpotId) {
-      return res.status(400).json({ message: 'parkingSpotId is required' });
-    }
+    const { parkingSpotId, parkingLotName, location, vehicleType, startTime, endTime, vehicle, priceOverride } = req.body;
+    
     if (!startTime || !endTime) {
       return res.status(400).json({ message: 'startTime and endTime are required' });
     }
@@ -296,14 +294,84 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'endTime must be after startTime' });
     }
 
-    const spot = await ParkingSpot.findById(parkingSpotId);
-    if (!spot) {
-      return res.status(404).json({ message: 'Parking spot not found' });
-    }
+    let spot = null;
 
-    const overlap = await hasOverlap({ spotId: spot._id, startTime: start, endTime: end });
-    if (overlap) {
-      return res.status(409).json({ message: 'This parking spot is already booked for the selected time window' });
+    // If parkingSpotId is provided, use it directly (backward compatibility)
+    if (parkingSpotId) {
+      spot = await ParkingSpot.findById(parkingSpotId);
+      if (!spot) {
+        return res.status(404).json({ message: 'Parking spot not found' });
+      }
+
+      const overlap = await hasOverlap({ spotId: spot._id, startTime: start, endTime: end });
+      if (overlap) {
+        return res.status(409).json({ message: 'This parking spot is already booked for the selected time window' });
+      }
+    } else {
+      // Auto-assign: Find available spots for the parking lot
+      if (!parkingLotName && !location) {
+        return res.status(400).json({ 
+          message: 'Either parkingSpotId or (parkingLotName/location) is required' 
+        });
+      }
+
+      // Build query to find spots for this parking lot
+      const spotQuery = {};
+      if (parkingLotName) {
+        const lotRegex = { $regex: parkingLotName, $options: 'i' };
+        spotQuery.$or = [
+          { parkingLotName: lotRegex },
+          { parkinglotName: lotRegex },
+        ];
+      }
+      if (location) {
+        spotQuery.location = { $regex: location, $options: 'i' };
+      }
+      if (vehicleType && vehicleType !== 'All') {
+        spotQuery.vehicleType = vehicleType;
+      }
+
+      // Find all spots matching the criteria
+      const allSpots = await ParkingSpot.find(spotQuery);
+      
+      if (allSpots.length === 0) {
+        return res.status(404).json({ 
+          message: `No parking spots found for ${parkingLotName || location}. Please ask the admin to add more spots.`,
+          code: 'NO_SPOTS_FOUND',
+          parkingLotName: parkingLotName || null,
+          location: location || null,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // Find spots that are not booked during the requested time window
+      const bookedSpotIds = await Booking.find({
+        parkingSpot: { $in: allSpots.map((s) => s._id) },
+        status: { $in: ['booked', 'pending', 'approved'] },
+        startTime: { $lt: end },
+        endTime: { $gt: start },
+      }).distinct('parkingSpot');
+
+      const availableSpots = allSpots.filter(
+        (s) => !bookedSpotIds.some((bookedId) => bookedId.toString() === s._id.toString())
+      );
+
+      if (availableSpots.length === 0) {
+        const lotName = parkingLotName || location || 'this location';
+        return res.status(409).json({ 
+          message: `All ${allSpots.length} spot(s) at "${lotName}" are already booked for the selected time. Please ask the admin to add more spots.`,
+          code: 'NO_AVAILABLE_SPOTS',
+          parkingLotName: parkingLotName || null,
+          location: location || null,
+          totalSpots: allSpots.length,
+          bookedSpots: bookedSpotIds.length,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // Automatically assign the first available spot
+      spot = availableSpots[0];
+      console.log(`✅ Auto-assigned spot: ${spot.spotNum} at ${spot.parkingLotName || spot.parkinglotName}`);
     }
 
     const durationMs = end.getTime() - start.getTime();
@@ -596,6 +664,77 @@ export const approveBooking = async (req, res) => {
         });
       }
 
+      // Automatically assign the latest available spot for this parking lot
+      console.log(`🔍 Finding available spot for parking lot: ${requestedParkingLotName}...`);
+      
+      // Find all spots for this parking lot
+      const allSpotsForLot = await ParkingSpot.find({
+        $or: [
+          { parkingLotName: { $regex: new RegExp(`^${requestedParkingLotName}$`, 'i') } },
+          { parkinglotName: { $regex: new RegExp(`^${requestedParkingLotName}$`, 'i') } }
+        ]
+      });
+
+      if (allSpotsForLot.length === 0) {
+        return res.status(404).json({ 
+          message: `No parking spots found for "${requestedParkingLotName}". Please add spots first.`,
+          code: 'NO_SPOTS_FOUND',
+          parkingLotName: requestedParkingLotName
+        });
+      }
+
+      // Find spots that are not booked during the requested time window (if time is specified)
+      let availableSpot = null;
+      
+      if (booking.startTime && booking.endTime) {
+        const bookedSpotIds = await Booking.find({
+          parkingSpot: { $in: allSpotsForLot.map((s) => s._id) },
+          status: { $in: ['booked', 'pending', 'approved'] },
+          startTime: { $lt: new Date(booking.endTime) },
+          endTime: { $gt: new Date(booking.startTime) },
+          _id: { $ne: booking._id }
+        }).distinct('parkingSpot');
+
+        const availableSpotsList = allSpotsForLot.filter(
+          (s) => !bookedSpotIds.some((bookedId) => bookedId.toString() === s._id.toString())
+        );
+
+        if (availableSpotsList.length > 0) {
+          // Get the latest spot (by creation date or spot number)
+          availableSpot = availableSpotsList.sort((a, b) => {
+            // Sort by spot number (if numeric) or creation date
+            const aNum = parseInt(a.spotNum) || 0;
+            const bNum = parseInt(b.spotNum) || 0;
+            if (aNum !== bNum) return bNum - aNum; // Latest spot number first
+            return new Date(b.createdAt) - new Date(a.createdAt); // Or by creation date
+          })[0];
+          console.log(`✅ Found available spot: ${availableSpot.spotNum} at ${availableSpot.parkingLotName}`);
+        }
+      } else {
+        // If no time specified, just get the latest spot
+        availableSpot = allSpotsForLot.sort((a, b) => {
+          const aNum = parseInt(a.spotNum) || 0;
+          const bNum = parseInt(b.spotNum) || 0;
+          if (aNum !== bNum) return bNum - aNum;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        })[0];
+        console.log(`✅ Assigning latest spot: ${availableSpot.spotNum} at ${availableSpot.parkingLotName}`);
+      }
+
+      if (!availableSpot) {
+        return res.status(409).json({ 
+          message: `All ${allSpotsForLot.length} spot(s) at "${requestedParkingLotName}" are already booked for the selected time. Please add more spots.`,
+          code: 'NO_AVAILABLE_SPOTS',
+          parkingLotName: requestedParkingLotName,
+          totalSpots: allSpotsForLot.length,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // Assign the spot to the booking
+      booking.parkingSpot = availableSpot._id;
+      console.log(`✅ Assigned spot ${availableSpot.spotNum} to booking ${booking._id}`);
+
       // Store user email and name BEFORE saving (populated fields may be lost after save)
       let userEmail = booking.user?.email;
       const userName = booking.user?.name;
@@ -617,7 +756,7 @@ export const approveBooking = async (req, res) => {
         }
       }
 
-      // For search queries, mark as approved (admin will assign spot later)
+      // For search queries, mark as approved and assign spot
       // Approve the booking FIRST, then try to send email
       booking.status = 'approved';
       await booking.save();
@@ -635,20 +774,25 @@ export const approveBooking = async (req, res) => {
         console.log(`   Email address: ${userEmail}`);
         console.log(`   Transporter available: ${transporter ? 'YES ✅' : 'NO ❌'}`);
         
+        // Populate spot info for email
+        const spotInfo = await ParkingSpot.findById(availableSpot._id).select('parkingLotName parkinglotName spotNum location floor');
+        
         emailResult = await sendBookingEmail({
         to: userEmail,
         subject: 'Your parking spot request has been approved',
         html: `
           <h2>Request Approved</h2>
           <p>Hi ${userName || ''},</p>
-          <p>Your parking spot request has been approved by the admin.</p>
+          <p>Your parking spot request has been approved and a spot has been assigned.</p>
           <ul>
-            <li><strong>Parking Lot Name:</strong> ${booking.parkingLotName || booking.location || 'N/A'}</li>
+            <li><strong>Parking Lot:</strong> ${spotInfo?.parkingLotName || spotInfo?.parkinglotName || booking.parkingLotName || booking.location || 'N/A'}</li>
+            <li><strong>Spot Number:</strong> ${spotInfo?.spotNum || 'N/A'}</li>
+            ${spotInfo?.floor ? `<li><strong>Floor:</strong> ${spotInfo.floor}</li>` : ''}
+            ${spotInfo?.location ? `<li><strong>Area:</strong> ${spotInfo.location}</li>` : ''}
             <li><strong>Vehicle Type:</strong> ${booking.vehicleType || 'N/A'}</li>
             ${booking.startTime ? `<li><strong>From:</strong> ${new Date(booking.startTime).toLocaleString()}</li>` : ''}
             ${booking.endTime ? `<li><strong>To:</strong> ${new Date(booking.endTime).toLocaleString()}</li>` : ''}
           </ul>
-          <p>We will contact you shortly with spot assignment details.</p>
           <p>Thank you for choosing our service.</p>
         `,
         });
@@ -680,11 +824,86 @@ export const approveBooking = async (req, res) => {
       });
     }
 
-    // For pending bookings, check for conflicts and assign spot
+    // For pending bookings, assign spot if not already assigned
     if (!booking.parkingSpot) {
-      return res.status(400).json({ 
-        message: 'Cannot approve booking without a parking spot assigned' 
+      // Try to get parking lot name from booking
+      const lotName = booking.parkingLotName || booking.location;
+      
+      if (!lotName) {
+        return res.status(400).json({ 
+          message: 'Cannot approve booking without a parking lot name or spot assigned' 
+        });
+      }
+
+      // Find and assign an available spot
+      console.log(`🔍 Finding available spot for parking lot: ${lotName}...`);
+      
+      const allSpotsForLot = await ParkingSpot.find({
+        $or: [
+          { parkingLotName: { $regex: new RegExp(`^${lotName}$`, 'i') } },
+          { parkinglotName: { $regex: new RegExp(`^${lotName}$`, 'i') } }
+        ]
       });
+
+      if (allSpotsForLot.length === 0) {
+        return res.status(404).json({ 
+          message: `No parking spots found for "${lotName}". Please add spots first.`,
+          code: 'NO_SPOTS_FOUND',
+          parkingLotName: lotName
+        });
+      }
+
+      // Find available spot for the time window
+      let availableSpot = null;
+      
+      if (booking.startTime && booking.endTime) {
+        const bookedSpotIds = await Booking.find({
+          parkingSpot: { $in: allSpotsForLot.map((s) => s._id) },
+          status: { $in: ['booked', 'pending', 'approved'] },
+          startTime: { $lt: new Date(booking.endTime) },
+          endTime: { $gt: new Date(booking.startTime) },
+          _id: { $ne: booking._id }
+        }).distinct('parkingSpot');
+
+        const availableSpotsList = allSpotsForLot.filter(
+          (s) => !bookedSpotIds.some((bookedId) => bookedId.toString() === s._id.toString())
+        );
+
+        if (availableSpotsList.length > 0) {
+          // Get the latest spot
+          availableSpot = availableSpotsList.sort((a, b) => {
+            const aNum = parseInt(a.spotNum) || 0;
+            const bNum = parseInt(b.spotNum) || 0;
+            if (aNum !== bNum) return bNum - aNum;
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          })[0];
+        }
+      } else {
+        // If no time specified, get the latest spot
+        availableSpot = allSpotsForLot.sort((a, b) => {
+          const aNum = parseInt(a.spotNum) || 0;
+          const bNum = parseInt(b.spotNum) || 0;
+          if (aNum !== bNum) return bNum - aNum;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        })[0];
+      }
+
+      if (!availableSpot) {
+        return res.status(409).json({ 
+          message: `All ${allSpotsForLot.length} spot(s) at "${lotName}" are already booked. Please add more spots.`,
+          code: 'NO_AVAILABLE_SPOTS',
+          parkingLotName: lotName,
+          totalSpots: allSpotsForLot.length,
+          suggestion: 'add_spots'
+        });
+      }
+
+      // Assign the spot
+      booking.parkingSpot = availableSpot._id;
+      console.log(`✅ Assigned spot ${availableSpot.spotNum} to booking ${booking._id}`);
+      
+      // Reload booking with populated spot for conflict check
+      await booking.populate('parkingSpot', 'parkingLotName parkinglotName spotNum location floor pricePerHour');
     }
 
     // Check for conflicts with approved bookings (exclude current booking)
@@ -1092,86 +1311,79 @@ export const recordExit = async (req, res) => {
       });
     }
 
-    // Get parking spot price per hour - always get the current price from the spot first
-    // This ensures we use the most up-to-date price, not the stored effectivePricePerHour which might be outdated
-    let pricePerHour = 50; // Default fallback
+    // Get parking lot name first (needed for lookup)
     let parkingLotName = null;
-
     if (booking.parkingSpot) {
-      // Booking has a parking spot assigned
       parkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || null;
-
-      // Always try to get the current pricePerHour from the spot first (most accurate)
-      // First try from populated spot
-      pricePerHour = booking.parkingSpot?.pricePerHour;
-
-      // If not found in populated spot or seems incorrect, fetch directly from database
-      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
-        console.log('⚠️  pricePerHour not found in populated spot or seems incorrect, fetching from database...');
-        const spotId = booking.parkingSpot._id || booking.parkingSpot;
-
-        if (spotId) {
-          const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
-
-          if (spot && spot.pricePerHour) {
-            pricePerHour = spot.pricePerHour;
-            parkingLotName = spot.parkingLotName || parkingLotName;
-            console.log(`✅ Found current pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
-          } else {
-            console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
-          }
+    }
+    
+    // Get parking lot name from booking if not from spot
+    if (!parkingLotName) {
+      parkingLotName = booking.parkingLotName || booking.location;
+    }
+    
+    // We'll get the price from parking lot lookup below - don't use spot price or effectivePricePerHour
+    // as they might be outdated (from old offers or price changes)
+    let pricePerHour = 50; // Default fallback (will be overridden by parking lot lookup)
+    
+    // ALWAYS get current price from parking lot name - this is the SOURCE OF TRUTH
+    // This is especially important when no spot is assigned or if the price seems outdated
+    const lotName = parkingLotName || booking.parkingLotName || booking.location;
+    
+    if (lotName) {
+      console.log(`🔍 Getting CURRENT price from parking lot "${lotName}" (this will override any stored price)...`);
+      
+      // Find ALL spots from this parking lot to get the most representative price
+      const lotSpots = await ParkingSpot.find({
+        $or: [
+          { parkingLotName: { $regex: new RegExp(`^${lotName}$`, 'i') } },
+          { parkinglotName: { $regex: new RegExp(`^${lotName}$`, 'i') } }
+        ]
+      }).select('pricePerHour parkingLotName');
+      
+      if (lotSpots && lotSpots.length > 0) {
+        // Get the most common price (mode) or average, but prefer the highest non-zero price
+        // This ensures we get the correct current rate, not an old discounted rate
+        const prices = lotSpots
+          .map(s => s.pricePerHour)
+          .filter(p => p && p > 0);
+        
+        if (prices.length > 0) {
+          // Use the maximum price found (most spots should have the same price, but we want the current rate)
+          // If prices vary, we'll use the most common one, or max if they're all different
+          const priceCounts = {};
+          prices.forEach(p => {
+            priceCounts[p] = (priceCounts[p] || 0) + 1;
+          });
+          
+          // Get the price that appears most often, or the max if all are unique
+          const mostCommonPrice = Object.keys(priceCounts).reduce((a, b) => 
+            priceCounts[a] > priceCounts[b] ? a : b
+          );
+          
+          const newPricePerHour = Number(mostCommonPrice);
+          
+          // ALWAYS use the parking lot price as the source of truth (it's the current rate)
+          // This overrides any stored price from the booking or individual spot
+          pricePerHour = newPricePerHour;
+          parkingLotName = lotSpots[0].parkingLotName || lotName;
+          console.log(`✅ Using CURRENT parking lot rate: ৳${pricePerHour}/hour for ${parkingLotName}`);
+        } else {
+          console.warn(`⚠️  No valid prices found in spots for parking lot "${lotName}"`);
         }
       } else {
-        console.log(`✅ Using current pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
-      }
-      
-      // Only use effectivePricePerHour as a last resort fallback if we still don't have a valid price
-      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
-        if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
-          pricePerHour = booking.effectivePricePerHour;
-          console.log(`⚠️  Using stored effectivePricePerHour as fallback: ৳${pricePerHour}/hour`);
-        }
+        console.warn(`⚠️  No spots found for parking lot "${lotName}"`);
       }
     }
     
-    // If no parking spot assigned or price still not found, try to get price from parking lot name
-    if (!booking.parkingSpot || !pricePerHour || pricePerHour === 50) {
-      // Get parking lot name from booking
-      const lotName = parkingLotName || booking.parkingLotName || booking.location;
-      
-      if (lotName) {
-        console.log(`⚠️  No parking spot assigned or price not found, but found parking lot name: ${lotName}`);
-        console.log(`   Attempting to find current price for this parking lot...`);
-        
-        // Find a spot from this parking lot to get the current price
-        const sampleSpot = await ParkingSpot.findOne({
-          $or: [
-            { parkingLotName: { $regex: new RegExp(`^${lotName}$`, 'i') } },
-            { parkinglotName: { $regex: new RegExp(`^${lotName}$`, 'i') } }
-          ]
-        }).select('pricePerHour parkingLotName');
-        
-        if (sampleSpot && sampleSpot.pricePerHour && sampleSpot.pricePerHour > 0) {
-          pricePerHour = sampleSpot.pricePerHour;
-          parkingLotName = sampleSpot.parkingLotName || lotName;
-          console.log(`✅ Found current pricePerHour from parking lot: ৳${pricePerHour}/hour for ${parkingLotName}`);
-        } else {
-          // Last resort: use effectivePricePerHour if available
-          if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
-            pricePerHour = booking.effectivePricePerHour;
-            console.log(`⚠️  No spots found for parking lot "${lotName}", using stored effectivePricePerHour: ৳${pricePerHour}/hour`);
-          } else {
-            console.warn(`⚠️  No spots found for parking lot "${lotName}", using default: ৳${pricePerHour}/hour`);
-          }
-        }
+    // Final fallback: use effectivePricePerHour only if we still don't have a valid price
+    // BUT only if parking lot lookup failed completely
+    if (!pricePerHour || pricePerHour <= 0) {
+      if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
+        pricePerHour = booking.effectivePricePerHour;
+        console.log(`⚠️  Using stored effectivePricePerHour as final fallback: ৳${pricePerHour}/hour`);
       } else {
-        // Last resort: use effectivePricePerHour if available
-        if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
-          pricePerHour = booking.effectivePricePerHour;
-          console.log(`⚠️  No parking lot name found, using stored effectivePricePerHour: ৳${pricePerHour}/hour`);
-        } else {
-          console.warn(`⚠️  No parking spot or parking lot name found, using default: ৳${pricePerHour}/hour`);
-        }
+        console.warn(`⚠️  No valid price found, using default: ৳${pricePerHour}/hour`);
       }
     }
     

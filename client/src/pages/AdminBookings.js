@@ -164,10 +164,9 @@ const AdminBookings = () => {
       const minimumApplied = data.booking?.minimumChargeApplied || false;
       
       if (minimumApplied && chargedAmount > calculatedPrice) {
-        message += `Calculated Amount: ৳${calculatedPrice.toFixed(2)}\n`;
         message += `Charged Amount: ৳${chargedAmount.toFixed(2)} (minimum charge applied)\n`;
       } else {
-        message += `Total Amount: ৳${calculatedPrice.toFixed(2)}\n`;
+        message += `Total Amount: ৳${chargedAmount.toFixed(2)}\n`;
       }
       
       const paymentStatus = data.booking?.paymentStatus || 'pending';
