@@ -1092,50 +1092,58 @@ export const recordExit = async (req, res) => {
       });
     }
 
-    // Get parking spot price per hour - ensure we get the correct price
-    let pricePerHour = booking.effectivePricePerHour || 50; // Default fallback (overridden below if needed)
+    // Get parking spot price per hour - always get the current price from the spot first
+    // This ensures we use the most up-to-date price, not the stored effectivePricePerHour which might be outdated
+    let pricePerHour = 50; // Default fallback
     let parkingLotName = null;
 
     if (booking.parkingSpot) {
       // Booking has a parking spot assigned
       parkingLotName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || null;
 
-      if (!booking.effectivePricePerHour) {
-        // Try to get pricePerHour from populated spot when no stored rate is available
-        pricePerHour = booking.parkingSpot?.pricePerHour;
+      // Always try to get the current pricePerHour from the spot first (most accurate)
+      // First try from populated spot
+      pricePerHour = booking.parkingSpot?.pricePerHour;
 
-        // If not found in populated spot, fetch directly from database
-        if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
-          console.log('⚠️  pricePerHour not found in populated spot, fetching from database...');
-          const spotId = booking.parkingSpot._id || booking.parkingSpot;
+      // If not found in populated spot or seems incorrect, fetch directly from database
+      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
+        console.log('⚠️  pricePerHour not found in populated spot or seems incorrect, fetching from database...');
+        const spotId = booking.parkingSpot._id || booking.parkingSpot;
 
-          if (spotId) {
-            const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
+        if (spotId) {
+          const spot = await ParkingSpot.findById(spotId).select('pricePerHour parkingLotName spotNum');
 
-            if (spot && spot.pricePerHour) {
-              pricePerHour = spot.pricePerHour;
-              parkingLotName = spot.parkingLotName || parkingLotName;
-              console.log(`✅ Found pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
-            } else {
-              console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
-            }
+          if (spot && spot.pricePerHour) {
+            pricePerHour = spot.pricePerHour;
+            parkingLotName = spot.parkingLotName || parkingLotName;
+            console.log(`✅ Found current pricePerHour from database: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${spot.spotNum || 'N/A'}`);
+          } else {
+            console.warn(`⚠️  pricePerHour not found in database for spot ${spotId}, will try to find from parking lot name`);
           }
-        } else {
-          console.log(`✅ Using pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
+        }
+      } else {
+        console.log(`✅ Using current pricePerHour from populated spot: ৳${pricePerHour}/hour for ${parkingLotName || 'Unknown'} - Spot ${booking.parkingSpot?.spotNum || 'N/A'}`);
+      }
+      
+      // Only use effectivePricePerHour as a last resort fallback if we still don't have a valid price
+      if (!pricePerHour || pricePerHour === 50 || pricePerHour === 0) {
+        if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
+          pricePerHour = booking.effectivePricePerHour;
+          console.log(`⚠️  Using stored effectivePricePerHour as fallback: ৳${pricePerHour}/hour`);
         }
       }
     }
     
-    // If no parking spot assigned, try to get price from parking lot name
+    // If no parking spot assigned or price still not found, try to get price from parking lot name
     if (!booking.parkingSpot || !pricePerHour || pricePerHour === 50) {
       // Get parking lot name from booking
       const lotName = parkingLotName || booking.parkingLotName || booking.location;
       
       if (lotName) {
-        console.log(`⚠️  No parking spot assigned, but found parking lot name: ${lotName}`);
-        console.log(`   Attempting to find average price for this parking lot...`);
+        console.log(`⚠️  No parking spot assigned or price not found, but found parking lot name: ${lotName}`);
+        console.log(`   Attempting to find current price for this parking lot...`);
         
-        // Find a spot from this parking lot to get the price
+        // Find a spot from this parking lot to get the current price
         const sampleSpot = await ParkingSpot.findOne({
           $or: [
             { parkingLotName: { $regex: new RegExp(`^${lotName}$`, 'i') } },
@@ -1143,15 +1151,27 @@ export const recordExit = async (req, res) => {
           ]
         }).select('pricePerHour parkingLotName');
         
-        if (sampleSpot && sampleSpot.pricePerHour) {
+        if (sampleSpot && sampleSpot.pricePerHour && sampleSpot.pricePerHour > 0) {
           pricePerHour = sampleSpot.pricePerHour;
           parkingLotName = sampleSpot.parkingLotName || lotName;
-          console.log(`✅ Found pricePerHour from parking lot: ৳${pricePerHour}/hour for ${parkingLotName}`);
+          console.log(`✅ Found current pricePerHour from parking lot: ৳${pricePerHour}/hour for ${parkingLotName}`);
         } else {
-          console.warn(`⚠️  No spots found for parking lot "${lotName}", using default: ৳${pricePerHour}/hour`);
+          // Last resort: use effectivePricePerHour if available
+          if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
+            pricePerHour = booking.effectivePricePerHour;
+            console.log(`⚠️  No spots found for parking lot "${lotName}", using stored effectivePricePerHour: ৳${pricePerHour}/hour`);
+          } else {
+            console.warn(`⚠️  No spots found for parking lot "${lotName}", using default: ৳${pricePerHour}/hour`);
+          }
         }
       } else {
-        console.warn(`⚠️  No parking spot or parking lot name found, using default: ৳${pricePerHour}/hour`);
+        // Last resort: use effectivePricePerHour if available
+        if (booking.effectivePricePerHour && booking.effectivePricePerHour > 0) {
+          pricePerHour = booking.effectivePricePerHour;
+          console.log(`⚠️  No parking lot name found, using stored effectivePricePerHour: ৳${pricePerHour}/hour`);
+        } else {
+          console.warn(`⚠️  No parking spot or parking lot name found, using default: ৳${pricePerHour}/hour`);
+        }
       }
     }
     
