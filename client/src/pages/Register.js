@@ -277,13 +277,8 @@ const Register = () => {
         ></div>
         
         <div className="relative z-10 w-full flex flex-col p-12">
-          {/* Top Badge */}
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30 rounded-lg px-4 py-2">
-              <span className="text-white text-lg">⭐</span>
-              <span className="text-white font-medium">Join 10,000+ Users</span>
-            </div>
-          </div>
+          {/* Empty space where badge was */}
+          <div className="mb-8"></div>
           
           {/* Main Content */}
           <div className="space-y-6">
