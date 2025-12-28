@@ -6,13 +6,13 @@ const AdminSpots = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
-    spotNum: '',
     area: '',
     floor: '',
     parkingLotName: '',
     vehicleType: 'All',
     pricePerHour: '',
-    tags: ''
+    tags: '',
+    numberOfSpots: '1'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -70,29 +70,42 @@ const AdminSpots = () => {
         ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
         : [];
 
+      const numberOfSpots = parseInt(formData.numberOfSpots) || 1;
+      
       const payload = {
-        spotNum: formData.spotNum,
         area: formData.area,
         floor: parseInt(formData.floor),
         parkingLotName: formData.parkingLotName,
         vehicleType: formData.vehicleType,
         pricePerHour: parseFloat(formData.pricePerHour) || 50,
+        numberOfSpots: numberOfSpots,
         ...(tags.length > 0 && { tags })
       };
 
       const response = await api.post('/parking', payload);
       
-      setSuccess(`✅ Parking spot "${formData.area} - Spot ${formData.spotNum}" added successfully!`);
+      if (numberOfSpots > 1) {
+        const count = response.data.count || numberOfSpots;
+        let message = `✅ Successfully added ${count} parking spot${count > 1 ? 's' : ''} to "${formData.parkingLotName}"!`;
+        
+        if (response.data.partialSuccess && response.data.warnings) {
+          message += `\n\n⚠️ Note: ${response.data.warnings.length} spot(s) could not be created (may already exist).`;
+        }
+        
+        setSuccess(message);
+      } else {
+        setSuccess(`✅ Parking spot added successfully to "${formData.parkingLotName}"!`);
+      }
       
       // Reset form
       setFormData({
-        spotNum: '',
         area: '',
         floor: '',
         parkingLotName: '',
         vehicleType: 'All',
         pricePerHour: '',
-        tags: ''
+        tags: '',
+        numberOfSpots: '1'
       });
     } catch (err) {
       console.error('Error creating spot:', err);
@@ -166,19 +179,28 @@ const AdminSpots = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Spot Number *
+                  Number of Spots *
                 </label>
-                <input
-                  type="text"
-                  name="spotNum"
-                  value={formData.spotNum}
+                <select
+                  name="numberOfSpots"
+                  value={formData.numberOfSpots}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="e.g., A-101"
-                />
+                >
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  ℹ️ Spot numbers must be unique within each parking lot. The same spot number can exist in different parking lots (e.g., Spot #1 in Bashundhara City and Spot #1 in Apollo Hospital are both allowed).
+                  Select how many spots to add. Spot numbers will be automatically generated sequentially (starting from 1, or the next available number).
                 </p>
               </div>
 
@@ -329,7 +351,7 @@ const AdminSpots = () => {
               disabled={loading}
               className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
-              {loading ? 'Adding Spot...' : 'Add Parking Spot'}
+              {loading ? (formData.numberOfSpots > 1 ? `Adding ${formData.numberOfSpots} Spots...` : 'Adding Spot...') : (formData.numberOfSpots > 1 ? `Add ${formData.numberOfSpots} Parking Spots` : 'Add Parking Spot')}
             </button>
           </form>
         </div>
