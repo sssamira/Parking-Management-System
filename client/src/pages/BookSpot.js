@@ -195,18 +195,32 @@ const BookSpot = () => {
           const prices = spots.map(spot => (spot.computedPricePerHour ?? spot.pricePerHour) || 0).filter(p => p > 0);
 
           if (prices.length > 0) {
-            const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
-            const minPrice = Math.min(...prices);
-            const maxPrice = Math.max(...prices);
+            // Find the most common price (mode) - this represents the latest admin-set price
+            const priceCounts = {};
+            prices.forEach(p => {
+              const roundedPrice = Math.round(p);
+              priceCounts[roundedPrice] = (priceCounts[roundedPrice] || 0) + 1;
+            });
+            
+            // Get the price that appears most frequently
+            let mostCommonPrice = prices[0];
+            let maxCount = 0;
+            Object.entries(priceCounts).forEach(([price, count]) => {
+              if (count > maxCount) {
+                maxCount = count;
+                mostCommonPrice = parseFloat(price);
+              }
+            });
+            
+            // Use the most common price, or average if all prices are unique
+            const displayPrice = maxCount > 1 ? mostCommonPrice : Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length);
+            
             const surgeApplied = spots.some(s => (s.computedPricePerHour ?? s.pricePerHour) !== s.pricePerHour);
             const surgePercent = surgeApplied ? (spots.find(s => (s.computedPricePerHour ?? s.pricePerHour) !== s.pricePerHour)?.surgePercent ?? null) : null;
 
             setLocationPrice({
               location: value,
-              average: avgPrice.toFixed(2),
-              min: minPrice,
-              max: maxPrice,
-              hasRange: minPrice !== maxPrice,
+              price: displayPrice, // Single price instead of range
               surgeApplied,
               surgePercent,
               loading: false
@@ -214,10 +228,7 @@ const BookSpot = () => {
           } else {
             setLocationPrice({
               location: value,
-              average: 'N/A',
-              min: 0,
-              max: 0,
-              hasRange: false,
+              price: 'N/A',
               noPrice: true,
               loading: false
             });
@@ -226,10 +237,7 @@ const BookSpot = () => {
           // Show message even if no spots found
           setLocationPrice({
             location: value,
-            average: 'N/A',
-            min: 0,
-            max: 0,
-            hasRange: false,
+            price: 'N/A',
             noSpots: true,
             loading: false
           });
@@ -238,10 +246,7 @@ const BookSpot = () => {
         console.error('Error fetching location price:', err);
         setLocationPrice({
           location: value,
-          average: 'N/A',
-          min: 0,
-          max: 0,
-          hasRange: false,
+          price: 'N/A',
           error: true,
           loading: false
         });
@@ -631,9 +636,7 @@ const BookSpot = () => {
                         </p>
                       ) : (
                         <p className="text-sm text-blue-800 font-medium">
-                          💰 Hourly payment is ৳{locationPrice.hasRange
-                            ? `${locationPrice.min} - ৳${locationPrice.max}`
-                            : locationPrice.average} for <span className="font-semibold">{locationPrice.location}</span> parking
+                          💰 Hourly payment is ৳{locationPrice.price || locationPrice.average || 'N/A'} for <span className="font-semibold">{locationPrice.location}</span> parking
                           {locationPrice.surgeApplied && (
                             <span className="ml-2 inline-block px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded">Rush +{locationPrice.surgePercent ?? ''}%</span>
                           )}
