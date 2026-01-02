@@ -38,4 +38,43 @@ router.post("/create-payment-intent", async (req, res) => {
   }
 });
 
+router.post("/create-checkout-session", async (req, res) => {
+  try {
+    if (!stripeSecret) {
+      return res.status(500).json({ message: "Stripe secret key not configured" });
+    }
+
+    const { amount, currency, description } = req.body || {};
+    const majorAmount = Number(amount);
+    const curr = (currency || "bdt").toLowerCase();
+    if (!majorAmount || !Number.isFinite(majorAmount) || majorAmount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const unitAmount = Math.max(8000, Math.round(majorAmount * 100));
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: curr,
+            product_data: { name: description || "Parking Spot Booking" },
+            unit_amount: unitAmount,
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${clientUrl}/my-bookings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${clientUrl}/book-spot?checkout=cancelled`,
+    });
+
+    res.json({ url: session.url, id: session.id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 export default router;
