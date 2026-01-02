@@ -511,6 +511,21 @@ const Homepage = () => {
               </p>
             </Link>
           )}
+          {/* Admin Only - Reports Card */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/reports"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(59,130,246,0.35)] p-8 border border-blue-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(59,130,246,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 text-3xl mb-4">
+                📈
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Admin Reports</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Generate revenue, peak usage, occupancy, and customer trend reports.
+              </p>
+            </Link>
+          )}
 
           {/* Admin Only - Chat Card */}
           {user && user.role === 'admin' && (
