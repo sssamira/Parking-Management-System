@@ -17,6 +17,9 @@ const LiveMap = () => {
   const [parkingLots, setParkingLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("map"); // "map" or "list"
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [isConnected, setIsConnected] = useState(true);
+  const [updateCount, setUpdateCount] = useState(0);
 
   // Dhaka coordinates as default center
   const defaultCenter = [23.8103, 90.4125];
@@ -43,9 +46,20 @@ const LiveMap = () => {
     fetchParkingLots();
     // Auto-refresh every 30 seconds
     const intervalId = setInterval(fetchParkingLots, 30000);
+
+    // Refresh when user returns to tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Tab became visible, refreshing map...");
+        fetchParkingLots();
+      }
+    };    
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   
     return () => {
         clearInterval(intervalId); // Cleanup on unmount
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
 
   }, []);
@@ -53,16 +67,29 @@ const LiveMap = () => {
   const fetchParkingLots = async () => {
     try {
       // Use Axios instead of fetch
-      const response = await api.get("/map/parking-lots");
+      const response = await api.get("/map/parking-lots", {
+        params: { _t: Date.now() }  // Cache buster
+      });
       
       // Axios automatically parses JSON, no .json() needed
       const data = response.data;
       
       if (data.success) {
-        setParkingLots(data.data);
+        setParkingLots(prev => {
+          // Check if data actually changed
+          const hasChanged = JSON.stringify(prev) !== JSON.stringify(data.data);
+          if (hasChanged) {
+            setUpdateCount(count => count + 1);
+          }
+          return data.data;
+        });
+        
+        setLastUpdate(new Date());
+        setIsConnected(true);
       }
     } catch (error) {
       console.error("Error fetching parking lots:", error);
+      setIsConnected(false);
     } finally {
       setLoading(false);
     }
@@ -106,6 +133,20 @@ const LiveMap = () => {
               <p className="text-gray-600">
                 Real-time availability of parking lots in Dhaka. Color-coded by availability.
               </p>
+              {lastUpdate && (
+                <p className="text-sm text-gray-500 mt-1">
+                Last updated: {lastUpdate.toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+                {updateCount > 0 && (
+                  <span className="ml-4">
+                    Updates: <span className="font-medium">{updateCount}</span>
+                  </span>
+                )}
+              </p>
+            )}
             </div>
             <div className="flex space-x-2">
               <button
@@ -134,6 +175,21 @@ const LiveMap = () => {
               >
                 ← Back to Home
               </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Connection Status */}
+        <div className={`mb-4 p-3 rounded-lg ${isConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className={`font-medium ${isConnected ? 'text-green-700' : 'text-red-700'}`}>
+                {isConnected ? 'Connected to live updates' : 'Connection lost - retrying...'}
+              </span>
+            </div>
+            <div className="text-sm text-gray-600">
+              Auto-refreshes every 30 seconds
             </div>
           </div>
         </div>
@@ -281,12 +337,32 @@ const LiveMap = () => {
 
         {/* Refresh Button */}
         <div className="mt-8 text-center">
-          <button
-            onClick={fetchParkingLots}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Refresh Parking Data
-          </button>
+          <div className="inline-flex items-center space-x-4">
+            <div className="relative">
+              <button
+                onClick={fetchParkingLots}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Parking Data
+              </button>
+              {isConnected && (
+                <div className="absolute -top-1 -right-1">
+                  <div className="relative h-3 w-3">
+                    <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></div>
+                    <div className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {lastUpdate && (
+              <span className="text-sm text-gray-600">
+                Last updated: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -8,7 +8,10 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node scripts/init-database.js",
-    "setup": "npm run seed && npm start"
+    "reset": "node scripts/reset-database_ForLots.js",
+    "check": "node scripts/check-parking-data.js"
+
+    
   },
   "keywords": [
     "express",
