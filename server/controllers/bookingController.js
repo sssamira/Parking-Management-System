@@ -1486,14 +1486,16 @@ export const recordExit = async (req, res) => {
     }
 
     if (!isEmergencyExempt && user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
-      console.log('   ✅ Payment method detected - attempting to charge');
-      console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)} (৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
+      console.log('   ✅ Payment method detected - will automatically charge from saved card');
+      console.log(`   💳 Calculated amount: ৳${chargeAmount.toFixed(2)} (৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
+      console.log(`   ℹ️  If amount < ৳65, minimum charge of ৳65 will be applied automatically`);
+      console.log(`   ℹ️  If amount >= ৳65, actual calculated amount will be charged`);
       try {
-        // Charge the calculated amount (base rate × hours)
+        // Charge the calculated amount (minimum charge will be applied automatically if needed)
         paymentResult = await chargePaymentMethod(
           user.stripeCustomerId,
           user.paymentMethodId,
-          chargeAmount, // ৳80 per hour × duration
+          chargeAmount, // ৳80 per hour × duration (minimum ৳65 will be applied if needed)
           'bdt',
           {
             bookingId: booking._id.toString(),

@@ -303,12 +303,13 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
   }
 
   // Stripe requires minimum $0.50 USD for payments
-  // For BDT, this is approximately ৳50-60 depending on exchange rate
-  // Using ৳50 as a safe minimum to ensure it converts to at least $0.50 USD
+  // For BDT, based on current exchange rate (~1 USD = 110-120 BDT)
+  // ৳50 = ~$0.41 (too low), so we need at least ৳60-65 to meet $0.50 minimum
+  // Using ৳65 as a safe minimum to ensure it converts to at least $0.50 USD
   const STRIPE_MINIMUM_AMOUNT = {
-    'bdt': 50,  // ৳50 minimum (approximately $0.50 USD)
+    'bdt': 65,  // ৳65 minimum (ensures it converts to at least $0.50 USD)
     'usd': 0.50,
-    'default': 50
+    'default': 65
   };
 
   const minAmount = STRIPE_MINIMUM_AMOUNT[currency.toLowerCase()] || STRIPE_MINIMUM_AMOUNT.default;
@@ -319,8 +320,10 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
     throw new Error(`Invalid amount: ${amount}. Amount must be a positive number.`);
   }
   
-  // ALWAYS apply minimum charge if amount is below minimum
-  // This ensures we never attempt to charge below Stripe's minimum requirement
+  // Payment logic:
+  // - If amount < ৳65 (minimum) → automatically charge ৳65
+  // - If amount >= ৳65 → charge the actual calculated amount
+  // This ensures we never attempt to charge below Stripe's minimum requirement ($0.50 USD)
   let chargeAmount = Math.max(numericAmount, minAmount);
   const minimumChargeApplied = chargeAmount > numericAmount;
 
@@ -332,6 +335,8 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
 
   if (minimumChargeApplied) {
     console.log(`⚠️  Amount ৳${numericAmount.toFixed(2)} is below Stripe minimum (৳${minAmount.toFixed(2)}). Automatically applying minimum charge of ৳${chargeAmount.toFixed(2)}.`);
+  } else {
+    console.log(`✅ Amount ৳${numericAmount.toFixed(2)} is above minimum. Charging full amount.`);
   }
 
   console.log(`💳 Attempting to charge: ৳${chargeAmount.toFixed(2)} (original: ৳${numericAmount.toFixed(2)}, minimum applied: ${minimumChargeApplied})`);

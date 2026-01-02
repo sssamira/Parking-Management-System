@@ -178,7 +178,7 @@ const AdminBookings = () => {
         }
         if (minimumApplied) {
           message += `\n💳 Payment automatically charged from saved card.\n`;
-          message += `ℹ️ Minimum charge (৳50) applied as calculated amount was below Stripe minimum.`;
+          message += `ℹ️ Minimum charge (৳65) applied as calculated amount was below Stripe minimum.`;
         } else {
           message += `\n💳 Payment automatically charged from saved card.`;
         }
