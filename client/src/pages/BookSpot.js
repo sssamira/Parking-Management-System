@@ -984,7 +984,7 @@ const BookSpot = () => {
                     >
                       {loading ? 'Booking...' : 'Confirm Booking'}
                     </button>
-                    </button>
+                    
                     <button
                       type="button"
                       onClick={startCheckout}
