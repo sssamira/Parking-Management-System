@@ -20,6 +20,7 @@ import MyBookings from './pages/MyBookings';
 import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
+import AdminReports from './pages/AdminReports';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -231,6 +232,8 @@ function App() {
             <Route path="/admin/add-offer" element={<AddOffer />} />
             <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
             <Route path="/live-map" element={<LiveMap />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/*" element={<AdminReports />} />
           </Routes>
         </div>
       </div>
