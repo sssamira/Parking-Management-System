@@ -54,6 +54,7 @@ const PaymentMethodForm = ({ onSuccess, onCancel, userEmail }) => {
 
       // Create payment method with billing details for better saving
       // Including email helps with Google Pay and card saving to user's account
+      console.log('💳 Creating payment method with Stripe...');
       const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
@@ -63,15 +64,41 @@ const PaymentMethodForm = ({ onSuccess, onCancel, userEmail }) => {
       });
 
       if (pmError) {
+        console.error('❌ Payment method creation error:', pmError);
         setError(pmError.message);
         setLoading(false);
         return;
       }
 
+      if (!paymentMethod || !paymentMethod.id) {
+        console.error('❌ Payment method not created properly');
+        setError('Failed to create payment method. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Payment method created:', paymentMethod.id);
+      console.log('   Payment method type:', paymentMethod.type);
+      console.log('   Card brand:', paymentMethod.card?.brand);
+      console.log('   Card last4:', paymentMethod.card?.last4);
+      
+      // Verify payment method ID format
+      if (!paymentMethod.id || !paymentMethod.id.startsWith('pm_')) {
+        console.error('❌ Invalid payment method ID format:', paymentMethod.id);
+        setError('Invalid payment method ID. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('📤 Sending to backend...');
+      console.log('   Payment Method ID:', paymentMethod.id);
+
       // Save to backend
       const response = await api.post('/auth/payment-method', {
         paymentMethodId: paymentMethod.id,
       });
+      
+      console.log('✅ Backend response:', response.data);
 
       if (response.data) {
         onSuccess(response.data);

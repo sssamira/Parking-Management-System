@@ -1427,48 +1427,37 @@ export const recordExit = async (req, res) => {
     console.log(`   Entry Time: ${new Date(booking.actualEntryTime).toLocaleString()}`);
     console.log(`   Exit Time: ${new Date(exit).toLocaleString()}`);
     console.log(`   Duration: ${durationHours.toFixed(2)} hours`);
-    console.log(`   Price Per Hour: ৳${pricePerHour}`);
-
-    // Calculate actual parking fee
-    let actualPrice = calculateParkingFee(
-      booking.actualEntryTime,
-      exit,
-      pricePerHour
-    );
 
     // Payment bypass for emergency vehicles (Option A)
     const isEmergencyExempt = await isEmergencyVehicleBooking(booking);
+    
+    // Base rate of ৳80 per hour for all parking places (except emergency vehicles)
+    const BASE_RATE_PER_HOUR = 80;
+    
+    // Apply minimum duration of 0.5 hours (30 minutes)
+    const minimumDuration = 0.5;
+    const billingHours = Math.max(durationHours, minimumDuration);
+    
+    // Calculate price: base rate (৳80) multiplied by hours
+    let actualPrice = isEmergencyExempt ? 0 : (BASE_RATE_PER_HOUR * billingHours);
+    let chargeAmount = actualPrice;
+    let minimumChargeApplied = false; // Kept for compatibility
+    
     if (isEmergencyExempt) {
       console.log('🚑 Emergency vehicle detected: bypassing payment (Option A)');
-      actualPrice = 0;
     }
     
-    // Stripe minimum is 50 cents USD
-    // Current exchange rate: ৳50 ≈ $0.41, so we need at least ৳70-৳80 to ensure $0.50 USD
-    // Using ৳80 as minimum to account for exchange rate fluctuations and ensure it's always above $0.50 USD
-    const STRIPE_MINIMUM_BDT = 80; // Minimum ৳80 to ensure it's above $0.50 USD (Stripe requirement)
-    let chargeAmount = actualPrice;
-    let minimumChargeApplied = false;
-    
-    if (actualPrice > 0 && actualPrice < STRIPE_MINIMUM_BDT) {
-      chargeAmount = STRIPE_MINIMUM_BDT;
-      minimumChargeApplied = true;
-      console.log(`   ⚠️  Calculated amount (৳${actualPrice.toFixed(2)}) is below Stripe minimum (৳${STRIPE_MINIMUM_BDT})`);
-      console.log(`   💳 Will charge minimum amount: ৳${chargeAmount.toFixed(2)} to ensure auto-charge works`);
-    }
-    
-    console.log(`   Calculated Total Price: ৳${actualPrice.toFixed(2)}`);
-    if (minimumChargeApplied) {
-      console.log(`   Charge Amount (with minimum): ৳${chargeAmount.toFixed(2)}`);
-    }
+    console.log(`   Base Rate: ৳${BASE_RATE_PER_HOUR}/hour`);
+    console.log(`   Billing Hours: ${billingHours.toFixed(2)} hours`);
+    console.log(`   Total Amount: ৳${actualPrice.toFixed(2)} (৳${BASE_RATE_PER_HOUR} × ${billingHours.toFixed(2)} hours)`);
     const spotInfo = booking.parkingSpot 
       ? `${booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || 'Unknown'} - ${booking.parkingSpot?.spotNum || 'N/A'}`
       : parkingLotName || booking.parkingLotName || booking.location || 'No spot assigned';
     console.log(`   Parking Spot/Lot: ${spotInfo}\n`);
 
     booking.actualExitTime = exit;
-    booking.actualPrice = actualPrice; // Store the calculated price
-    // Store the amount that will be charged (may be higher if minimum applied)
+    booking.actualPrice = actualPrice; // Store the calculated price (base rate × hours)
+    // Store the amount that will be charged
     booking.chargedAmount = chargeAmount;
 
     if (isEmergencyExempt) {
@@ -1498,14 +1487,13 @@ export const recordExit = async (req, res) => {
 
     if (!isEmergencyExempt && user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
       console.log('   ✅ Payment method detected - attempting to charge');
-      console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)}${minimumChargeApplied ? ' (minimum charge applied)' : ''}`);
+      console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)} (৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
       try {
-        // Charge the amount (may be minimum if calculated amount was too small)
-        // This ensures auto-charge always works regardless of calculated amount
+        // Charge the calculated amount (base rate × hours)
         paymentResult = await chargePaymentMethod(
           user.stripeCustomerId,
           user.paymentMethodId,
-          chargeAmount, // Use chargeAmount (may be minimum if calculated was too small)
+          chargeAmount, // ৳80 per hour × duration
           'bdt',
           {
             bookingId: booking._id.toString(),
@@ -1521,14 +1509,16 @@ export const recordExit = async (req, res) => {
           booking.paymentStatus = 'paid';
           booking.paymentIntentId = paymentResult.paymentIntentId;
           booking.paymentMethodId = user.paymentMethodId;
-          booking.chargedAmount = chargeAmount; // Store the amount that was actually charged
+          // Use the actual charged amount from payment result (may include minimum charge)
+          booking.chargedAmount = paymentResult.chargedAmount || chargeAmount;
           booking.chargedAt = new Date();
           booking.paymentError = null;
           paymentError = null;
+          minimumChargeApplied = paymentResult.minimumChargeApplied || false;
           if (minimumChargeApplied) {
-            console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${chargeAmount.toFixed(2)} - minimum applied, calculated was ৳${actualPrice.toFixed(2)})`);
+            console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${booking.chargedAmount.toFixed(2)} - minimum charge applied, original amount was ৳${chargeAmount.toFixed(2)})`);
           } else {
-            console.log('   ✅ Payment successful! Status: PAID');
+            console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${booking.chargedAmount.toFixed(2)} - ৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
           }
         } else {
           booking.paymentStatus = 'failed';
@@ -1538,12 +1528,43 @@ export const recordExit = async (req, res) => {
         }
       } catch (paymentErr) {
         console.error('Payment processing error:', paymentErr);
-        // If Stripe rejects due to minimum amount, still mark as failed (not pending)
-        // This way the admin knows the charge was attempted but failed
-        booking.paymentStatus = 'failed';
-        paymentError = paymentErr.message || 'Payment processing failed';
-        booking.paymentError = paymentError;
-        console.log('   ❌ Payment failed with error:', paymentErr.message);
+        
+        // Check if payment method is invalid or doesn't exist
+        const errorMsg = paymentErr.message || '';
+        if (paymentErr.code === 'INVALID_PAYMENT_METHOD' || 
+            errorMsg.includes('No such PaymentMethod') ||
+            errorMsg.includes('No such payment_method') ||
+            errorMsg.includes('Payment method not found')) {
+          console.log('   ⚠️  Invalid payment method detected - marking for manual payment');
+          
+          // Clear invalid payment method from user account
+          try {
+            if (user && user._id) {
+              const userId = user._id;
+              await User.findByIdAndUpdate(userId, {
+                hasPaymentMethod: false,
+                paymentMethodId: null,
+                paymentMethodLast4: null,
+                paymentMethodBrand: null,
+              });
+              console.log(`   ✅ Cleared invalid payment method from user account`);
+            }
+          } catch (updateErr) {
+            console.error('   ⚠️  Failed to clear invalid payment method:', updateErr.message);
+          }
+          
+          // Mark as pending for manual payment (not failed, since it's a setup issue)
+          booking.paymentStatus = 'pending';
+          paymentError = 'Payment method not found or invalid. Payment will be processed manually. Please update your payment method.';
+          booking.paymentError = paymentError;
+          console.log('   ℹ️  Booking marked for manual payment due to invalid payment method');
+        } else {
+          // Other errors (card declined, insufficient funds, etc.) - mark as failed
+          booking.paymentStatus = 'failed';
+          paymentError = paymentErr.message || 'Payment processing failed';
+          booking.paymentError = paymentError;
+          console.log('   ❌ Payment failed with error:', paymentErr.message);
+        }
       }
     } else {
       // No payment method saved
@@ -1571,14 +1592,13 @@ export const recordExit = async (req, res) => {
             
             if (userDoc.hasPaymentMethod && userDoc.stripeCustomerId && userDoc.paymentMethodId) {
               console.log('   ✅ Payment method found in database - attempting to charge');
-              console.log(`   💳 Charging amount: ৳${actualPrice.toFixed(2)}`);
+              console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)} (৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
               try {
-                // Charge the amount (may be minimum if calculated amount was too small)
-                // This ensures auto-charge always works regardless of calculated amount
+                // Charge the calculated amount (base rate × hours)
                 paymentResult = await chargePaymentMethod(
                   userDoc.stripeCustomerId,
                   userDoc.paymentMethodId,
-                  chargeAmount, // Use chargeAmount (may be minimum if calculated was too small)
+                  chargeAmount, // ৳80 per hour × duration
                   'bdt',
                   {
                     bookingId: booking._id.toString(),
@@ -1594,14 +1614,16 @@ export const recordExit = async (req, res) => {
                   booking.paymentStatus = 'paid';
                   booking.paymentIntentId = paymentResult.paymentIntentId;
                   booking.paymentMethodId = userDoc.paymentMethodId;
-                  booking.chargedAmount = chargeAmount; // Store the amount that was actually charged
+                  // Use the actual charged amount from payment result (may include minimum charge)
+                  booking.chargedAmount = paymentResult.chargedAmount || chargeAmount;
                   booking.chargedAt = new Date();
                   booking.paymentError = null;
                   paymentError = null;
+                  minimumChargeApplied = paymentResult.minimumChargeApplied || false;
                   if (minimumChargeApplied) {
-                    console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${chargeAmount.toFixed(2)} - minimum applied, calculated was ৳${actualPrice.toFixed(2)})`);
+                    console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${booking.chargedAmount.toFixed(2)} - minimum charge applied, original amount was ৳${chargeAmount.toFixed(2)})`);
                   } else {
-                    console.log('   ✅ Payment successful! Status: PAID');
+                    console.log(`   ✅ Payment successful! Status: PAID (Charged ৳${booking.chargedAmount.toFixed(2)} - ৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)`);
                   }
                 } else {
                   booking.paymentStatus = 'failed';
@@ -1611,25 +1633,61 @@ export const recordExit = async (req, res) => {
                 }
               } catch (paymentErr) {
                 console.error('Payment processing error:', paymentErr);
-                // If Stripe rejects due to minimum amount, mark as failed (charge was attempted)
-                booking.paymentStatus = 'failed';
-                paymentError = paymentErr.message || 'Payment processing failed';
-                booking.paymentError = paymentError;
-                console.log('   ❌ Payment failed with error:', paymentErr.message);
+                
+                // Check if payment method is invalid or doesn't exist
+                const errorMsg = paymentErr.message || '';
+                if (paymentErr.code === 'INVALID_PAYMENT_METHOD' || 
+                    errorMsg.includes('No such PaymentMethod') ||
+                    errorMsg.includes('No such payment_method') ||
+                    errorMsg.includes('Payment method not found')) {
+                  console.log('   ⚠️  Invalid payment method detected - marking for manual payment');
+                  
+                  // Clear invalid payment method from user account
+                  try {
+                    if (userDoc && userDoc._id) {
+                      await User.findByIdAndUpdate(userDoc._id, {
+                        hasPaymentMethod: false,
+                        paymentMethodId: null,
+                        paymentMethodLast4: null,
+                        paymentMethodBrand: null,
+                      });
+                      console.log(`   ✅ Cleared invalid payment method from user account`);
+                    }
+                  } catch (updateErr) {
+                    console.error('   ⚠️  Failed to clear invalid payment method:', updateErr.message);
+                  }
+                  
+                  // Mark as pending for manual payment (not failed, since it's a setup issue)
+                  booking.paymentStatus = 'pending';
+                  paymentError = 'Payment method not found or invalid. Payment will be processed manually. Please update your payment method.';
+                  booking.paymentError = paymentError;
+                  console.log('   ℹ️  Booking marked for manual payment due to invalid payment method');
+                } else {
+                  // Other errors (card declined, insufficient funds, etc.) - mark as failed
+                  booking.paymentStatus = 'failed';
+                  paymentError = paymentErr.message || 'Payment processing failed';
+                  booking.paymentError = paymentError;
+                  console.log('   ❌ Payment failed with error:', paymentErr.message);
+                }
               }
             } else {
+              // No payment method found in database - mark for manual payment
               booking.paymentStatus = 'pending';
               paymentError = 'No payment method saved. Payment will be processed manually.';
+              console.log('   ℹ️  No payment method found in database - booking marked for manual payment');
             }
           }
         } catch (dbErr) {
           console.error('Error fetching user from database:', dbErr);
           booking.paymentStatus = 'pending';
           paymentError = 'No payment method saved. Payment will be processed manually.';
+          console.log('   ℹ️  Error fetching user - booking marked for manual payment');
         }
       } else {
+        // No payment method saved - mark for manual payment
         booking.paymentStatus = 'pending';
         paymentError = 'No payment method saved. Payment will be processed manually.';
+        console.log('   ℹ️  No payment method saved - booking marked for manual payment');
       }
     }
 
@@ -1660,7 +1718,7 @@ export const recordExit = async (req, res) => {
               <p><strong>Entry Time:</strong> ${new Date(booking.actualEntryTime).toLocaleString()}</p>
               <p><strong>Exit Time:</strong> ${new Date(exit).toLocaleString()}</p>
               <p><strong>Duration:</strong> ${durationHours} hours</p>
-              <p><strong>Total Amount:</strong> ৳${actualPrice.toFixed(2)}</p>
+              <p><strong>Total Amount:</strong> ৳${actualPrice.toFixed(2)} (৳${BASE_RATE_PER_HOUR}/hour × ${billingHours.toFixed(2)} hours)</p>
               <p><strong>Payment Status:</strong> ${booking.paymentStatus === 'paid' ? '✅ Paid' : booking.paymentStatus === 'failed' ? '❌ Failed' : '⏳ Pending'}</p>
             </div>
             ${paymentError ? `<p style="color: #dc2626;">⚠️ ${paymentError}</p>` : ''}

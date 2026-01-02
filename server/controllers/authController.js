@@ -368,25 +368,45 @@ export const savePaymentMethod = async (req, res) => {
   try {
     const { paymentMethodId } = req.body;
     
+    console.log('\n💳 ========== SAVE PAYMENT METHOD REQUEST ==========');
+    console.log(`   Payment Method ID: ${paymentMethodId}`);
+    console.log(`   User ID: ${req.user._id}`);
+    
     if (!paymentMethodId) {
+      console.error('❌ Payment method ID is missing');
       return res.status(400).json({ message: 'Payment method ID is required' });
+    }
+
+    // Validate payment method ID format
+    if (!paymentMethodId.startsWith('pm_')) {
+      console.error('❌ Invalid payment method ID format:', paymentMethodId);
+      return res.status(400).json({ message: 'Invalid payment method ID format. Please try entering your card details again.' });
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
+      console.error('❌ User not found:', req.user._id);
       return res.status(404).json({ message: 'User not found' });
     }
 
+    console.log(`   User email: ${user.email}`);
+    console.log(`   Existing stripeCustomerId: ${user.stripeCustomerId || 'NONE'}`);
+
     // Get or create Stripe customer
+    console.log('🔍 Getting or creating Stripe customer...');
     const customer = await getOrCreateStripeCustomer(user);
+    console.log(`✅ Stripe customer: ${customer.id}`);
     
     // Update user with Stripe customer ID if not already set
     if (!user.stripeCustomerId) {
       user.stripeCustomerId = customer.id;
+      console.log(`✅ Updated user with Stripe customer ID`);
     }
 
     // Attach payment method to customer
+    console.log('🔗 Attaching payment method to customer...');
     const paymentMethodDetails = await attachPaymentMethod(customer.id, paymentMethodId);
+    console.log(`✅ Payment method attached successfully`);
 
     // Update user with payment method details
     user.paymentMethodId = paymentMethodDetails.id;
@@ -397,6 +417,11 @@ export const savePaymentMethod = async (req, res) => {
     user.hasPaymentMethod = true;
 
     await user.save();
+
+    console.log(`✅ Payment method saved successfully for user ${user._id}`);
+    console.log(`   Card: ${paymentMethodDetails.brand} ending in ${paymentMethodDetails.last4}`);
+    console.log(`   Expires: ${paymentMethodDetails.expMonth}/${paymentMethodDetails.expYear}`);
+    console.log(`   ✅ This card will be automatically charged when exiting parking spots`);
 
     return res.status(200).json({
       message: 'Payment method saved successfully',
@@ -416,17 +441,39 @@ export const savePaymentMethod = async (req, res) => {
       statusCode: error.statusCode,
     });
     
+    // Determine appropriate HTTP status code
+    let statusCode = 500;
+    if (error.type === 'StripeInvalidRequestError' && error.code === 'resource_missing') {
+      statusCode = 400; // Bad request - payment method not found
+    } else if (error.type === 'StripeCardError') {
+      statusCode = 400; // Bad request - card error
+    }
+    
     // Provide more detailed error messages
     let errorMessage = 'Error saving payment method';
     if (error.message) {
       errorMessage = error.message;
     } else if (error.type === 'StripeInvalidRequestError') {
-      errorMessage = 'Invalid payment method. Please check your card details.';
+      if (error.code === 'resource_missing') {
+        errorMessage = 'Payment method not found. Please make sure your Stripe keys are configured correctly and try entering your card details again.';
+      } else {
+        errorMessage = 'Invalid payment method. Please check your card details.';
+      }
     } else if (error.type === 'StripeCardError') {
       errorMessage = 'Card error: ' + (error.message || 'Please check your card details.');
     }
     
-    return res.status(500).json({
+    // Log the full error for debugging
+    console.error('❌ Full error object:', JSON.stringify({
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      rawType: error.rawType,
+      rawCode: error.rawCode,
+    }, null, 2));
+    
+    return res.status(statusCode).json({
       message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
       details: process.env.NODE_ENV === 'development' ? {

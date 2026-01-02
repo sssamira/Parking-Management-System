@@ -163,10 +163,11 @@ const AdminBookings = () => {
       const chargedAmount = data.booking?.chargedAmount || calculatedPrice;
       const minimumApplied = data.booking?.minimumChargeApplied || false;
       
+      // Always show charged amount, with note if minimum was applied
       if (minimumApplied && chargedAmount > calculatedPrice) {
         message += `Charged Amount: ৳${chargedAmount.toFixed(2)} (minimum charge applied)\n`;
       } else {
-        message += `Total Amount: ৳${chargedAmount.toFixed(2)}\n`;
+        message += `Charged Amount: ৳${chargedAmount.toFixed(2)}\n`;
       }
       
       const paymentStatus = data.booking?.paymentStatus || 'pending';
@@ -179,7 +180,7 @@ const AdminBookings = () => {
           message += `\n💳 Payment automatically charged from saved card.\n`;
           message += `ℹ️ Minimum charge (৳50) applied as calculated amount was below Stripe minimum.`;
         } else {
-          message += `\n💳 Payment was automatically charged from saved payment method.`;
+          message += `\n💳 Payment automatically charged from saved card.`;
         }
       } else if (paymentStatus === 'failed') {
         message += `Payment Status: ❌ FAILED\n`;
