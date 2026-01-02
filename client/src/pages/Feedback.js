@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import  api  from '../utils/api';
+import api from '../utils/api';
 
 const Feedback = () => {
   const [formData, setFormData] = useState({
@@ -10,11 +10,13 @@ const Feedback = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -23,13 +25,9 @@ const Feedback = () => {
       }
 
       const response = await api.post('/feedback', formData);
-      const data = response.data
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to submit feedback');
-      }
-
-      alert('Feedback submitted successfully! Thank you for your input.');
+      
+      // Set success message
+      setSuccess('Feedback submitted successfully! Thank you for your input.');
       
       // Reset form
       setFormData({
@@ -37,6 +35,12 @@ const Feedback = () => {
         comment: '',
         category: 'Experience'
       });
+
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccess('');
+      }, 5000);
+
     } catch (err) {
       const errorMessage = err.response?.data?.message || 
                           err.message || 
@@ -46,6 +50,17 @@ const Feedback = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'rating' ? parseInt(value) : value
+    }));
+    // Clear messages when user starts typing
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -64,44 +79,58 @@ const Feedback = () => {
       {/* Overlay for better readability */}
       <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
 
-      {/* Content Container */}
-      <div className="relative z-10 container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
-        <div className="max-w-md mx-auto bg-white bg-opacity-95 backdrop-blur-sm p-6 rounded-lg shadow-xl">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">Submit Feedback</h1>
+      {/* Content Container - LARGER FORM LIKE FIRST IMAGE */}
+      <div className="relative z-10 container mx-auto px-4 py-12 min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-2xl mx-auto bg-white bg-opacity-95 backdrop-blur-sm p-10 rounded-2xl shadow-2xl">
+          <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Submit Feedback</h1>
           
+          {/* Success Message */}
+          {success && (
+            <div className="mb-8 p-5 bg-blue-50 border-2 border-blue-200 rounded-xl text-center">
+              <div className="text-blue-600 font-bold text-2xl mb-2">
+                ✓ Feedback submitted successfully!
+              </div>
+              <div className="text-blue-700 text-lg">
+                Thank you for your input.
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-8 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-lg">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Rating */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-lg font-medium text-gray-800 mb-2">
                 Rating (1-5)
               </label>
               <input
                 type="number"
+                name="rating"
                 min="1"
                 max="5"
                 value={formData.rating}
-                onChange={(e) => setFormData({...formData, rating: parseInt(e.target.value)})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onChange={handleInputChange}
+                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
                 required
               />
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-lg font-medium text-gray-800 mb-2">
                 Category
               </label>
               <select
+                name="category"
                 value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onChange={handleInputChange}
+                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
               >
                 <option value="Complaint">Complaint</option>
                 <option value="Suggestion">Suggestion</option>
@@ -111,19 +140,20 @@ const Feedback = () => {
 
             {/* Comment */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-lg font-medium text-gray-800 mb-2">
                 Your Feedback
               </label>
               <textarea
+                name="comment"
                 value={formData.comment}
-                onChange={(e) => setFormData({...formData, comment: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                rows="4"
+                onChange={handleInputChange}
+                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
+                rows="6"
                 placeholder="Share your experience, suggestions, or issues..."
                 required
                 minLength="10"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-sm text-gray-600 mt-2">
                 Minimum 10 characters
               </p>
             </div>
@@ -132,11 +162,11 @@ const Feedback = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -147,10 +177,10 @@ const Feedback = () => {
           </form>
 
           {/* Back Link */}
-          <div className="mt-6 text-center">
+          <div className="mt-10 text-center">
             <Link
               to="/"
-              className="text-indigo-600 hover:text-indigo-800 text-sm"
+              className="text-indigo-600 hover:text-indigo-800 text-lg font-medium"
             >
               ← Back to Home
             </Link>
