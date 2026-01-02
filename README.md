@@ -117,17 +117,6 @@ Parking-Management-System/
 
 ## Deployment
 
-### Vercel Deployment
-
-1. Install Vercel CLI:
-```bash
-npm i -g vercel
-```
-
-2. Deploy:
-```bash
-vercel
-```
 
 Or connect your GitHub repository to Vercel for automatic deployments.
 
