@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema(
           carType: {
             type: String,
             required: [true, 'Please provide your car type'],
-            enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other'],
+            enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'],
             trim: true,
           },
           carModel: {

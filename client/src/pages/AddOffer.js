@@ -28,6 +28,72 @@ const AddOffer = () => {
   const [loadingLots, setLoadingLots] = useState(true);
   const todayInputValue = useMemo(() => formatDateInputValue(new Date()), []);
 
+  const getOfferTimingStatus = (offer) => {
+    if (!offer?.isActive) {
+      return {
+        label: 'Inactive',
+        badgeClass: 'bg-gray-200 text-gray-600',
+      };
+    }
+
+    const now = new Date();
+    const start = new Date(offer.startDate);
+    const end = new Date(offer.endDate);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return {
+        label: 'Active',
+        badgeClass: 'bg-emerald-100 text-emerald-700',
+      };
+    }
+
+    if (now < start) {
+      return {
+        label: 'Upcoming',
+        badgeClass: 'bg-blue-100 text-blue-700',
+      };
+    }
+
+    if (now > end) {
+      return {
+        label: 'Expired',
+        badgeClass: 'bg-amber-100 text-amber-700',
+      };
+    }
+
+    return {
+      label: 'Active',
+      badgeClass: 'bg-emerald-100 text-emerald-700',
+    };
+  };
+
+  const handleDeleteOffer = async (offer) => {
+    if (!offer?._id) {
+      return;
+    }
+
+    const start = offer.startDate ? new Date(offer.startDate).toLocaleDateString() : '';
+    const end = offer.endDate ? new Date(offer.endDate).toLocaleDateString() : '';
+    const ok = window.confirm(
+      `Delete this offer for "${offer.parkingLotName}" (${start} - ${end})? This cannot be undone.`
+    );
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await api.delete(`/offers/${offer._id}`);
+      setStatus({ type: 'success', message: 'Offer deleted successfully.' });
+      fetchOffers();
+    } catch (error) {
+      console.error('Failed to delete offer:', error);
+      setStatus({
+        type: 'error',
+        message: error.response?.data?.message || 'Failed to delete offer.',
+      });
+    }
+  };
+
   const fetchOffers = async () => {
     setLoadingOffers(true);
     try {
@@ -370,6 +436,10 @@ const AddOffer = () => {
                     key={offer._id}
                     className="border border-gray-100 rounded-2xl p-4 bg-slate-50"
                   >
+                    {(() => {
+                      const timingStatus = getOfferTimingStatus(offer);
+                      return (
+                        <>
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm uppercase tracking-wide text-indigo-500 font-semibold">
@@ -379,13 +449,20 @@ const AddOffer = () => {
                           ৳{offer.priceAfterOffer?.toFixed(2) ?? '—'} / hr
                         </p>
                       </div>
-                      <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full ${
-                          offer.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {offer.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full ${timingStatus.badgeClass}`}
+                        >
+                          {timingStatus.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOffer(offer)}
+                          className="text-xs font-semibold px-3 py-1 rounded-full border border-red-200 text-red-700 bg-white hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-3 text-xs text-gray-500 space-y-1">
                       <p>
@@ -396,6 +473,9 @@ const AddOffer = () => {
                       )}
                       {offer.notes && <p className="text-gray-600">Note: {offer.notes}</p>}
                     </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

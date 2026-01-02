@@ -2,11 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
+const OFFER_CARD_THEMES = [
+  { bg: 'bg-indigo-50', border: 'border-indigo-100' },
+  { bg: 'bg-purple-50', border: 'border-purple-100' },
+  { bg: 'bg-pink-50', border: 'border-pink-100' },
+  { bg: 'bg-emerald-50', border: 'border-emerald-100' },
+  { bg: 'bg-amber-50', border: 'border-amber-100' },
+];
+
 const Homepage = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationRef = useRef(null);
+
+  const [activeOffers, setActiveOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(true);
+  const [offersError, setOffersError] = useState('');
+  const [activeOfferIndex, setActiveOfferIndex] = useState(0);
+  const [isOfferTransitioning, setIsOfferTransitioning] = useState(false);
+  const offerTimeoutRef = useRef(null);
+  const [offerCardTheme, setOfferCardTheme] = useState(OFFER_CARD_THEMES[0]);
+
+  const pickRandomOfferTheme = (previous) => {
+    if (OFFER_CARD_THEMES.length <= 1) return OFFER_CARD_THEMES[0];
+    let next = previous;
+    for (let attempts = 0; attempts < 5 && next === previous; attempts += 1) {
+      next = OFFER_CARD_THEMES[Math.floor(Math.random() * OFFER_CARD_THEMES.length)];
+    }
+    return next || OFFER_CARD_THEMES[0];
+  };
 
   let user = {};
   try {
@@ -26,6 +51,64 @@ const Homepage = () => {
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch active offers for the homepage slider
+  useEffect(() => {
+    let isMounted = true;
+
+    setOfferCardTheme((prev) => pickRandomOfferTheme(prev));
+
+    const fetchActiveOffers = async () => {
+      setOffersLoading(true);
+      setOffersError('');
+      try {
+        const response = await api.get('/offers/active');
+        const offers = response.data?.offers || [];
+        if (!isMounted) return;
+        setActiveOffers(Array.isArray(offers) ? offers : []);
+        setActiveOfferIndex(0);
+      } catch (error) {
+        if (!isMounted) return;
+        setOffersError(error.response?.data?.message || 'Failed to load active offers');
+        setActiveOffers([]);
+      } finally {
+        if (!isMounted) return;
+        setOffersLoading(false);
+      }
+    };
+
+    fetchActiveOffers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Rotate through offers one-by-one
+  useEffect(() => {
+    if (!activeOffers || activeOffers.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setIsOfferTransitioning(true);
+
+      if (offerTimeoutRef.current) {
+        clearTimeout(offerTimeoutRef.current);
+      }
+
+      offerTimeoutRef.current = setTimeout(() => {
+        setActiveOfferIndex((index) => (index + 1) % activeOffers.length);
+        setOfferCardTheme((prev) => pickRandomOfferTheme(prev));
+        setIsOfferTransitioning(false);
+      }, 350);
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      if (offerTimeoutRef.current) {
+        clearTimeout(offerTimeoutRef.current);
+        offerTimeoutRef.current = null;
+      }
+    };
+  }, [activeOffers]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -320,6 +403,68 @@ const Homepage = () => {
           {/* User Only - Hide these boxes for admins */}
           {user && user.role !== 'admin' && (
             <>
+              <Link
+                  to="/book-spot"
+                  className={`col-span-3 group rounded-3xl ${offerCardTheme.bg} shadow-[0_20px_60px_-25px_rgba(63,81,181,0.35)] p-8 border ${offerCardTheme.border} hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(63,81,181,0.45)] transition`}
+                  >
+                  <div className="flex items-start justify-between gap-6">
+                    <div>
+                      <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-indigo-100 text-indigo-600 text-3xl mb-4">
+                        🎁
+                      </div>
+                    </div>
+
+                    {activeOffers.length > 0 && !offersLoading && !offersError && (
+                      <span className="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full mt-1">
+                        {activeOfferIndex + 1}/{activeOffers.length}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-5">
+                    {offersLoading && (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-indigo-50 rounded w-2/3" />
+                        <div className="h-4 bg-indigo-50 rounded w-1/2 mt-3" />
+                        <div className="h-4 bg-indigo-50 rounded w-1/3 mt-3" />
+                      </div>
+                    )}
+
+                    {!offersLoading && offersError && (
+                      <p className="text-sm text-red-600">{offersError}</p>
+                    )}
+
+                    {!offersLoading && !offersError && activeOffers.length === 0 && (
+                      <p className="text-gray-600">No active offers right now.</p>
+                    )}
+
+                    {!offersLoading && !offersError && activeOffers.length > 0 && (
+                      <div
+                        className={`transition-all duration-500 ${
+                          isOfferTransitioning ? 'opacity-0 translate-x-8' : 'opacity-100 translate-x-0'
+                        }`}
+                      >
+                        <p className="text-lg font-semibold text-indigo-900">
+                          {activeOffers[activeOfferIndex]?.parkingLotName || 'Parking Lot'}
+                          {typeof activeOffers[activeOfferIndex]?.offerPercentage === 'number'
+                            ? ` — ${activeOffers[activeOfferIndex].offerPercentage}% off`
+                            : ''}
+                        </p>
+
+                        <p className="text-sm text-gray-600 mt-2">
+                          Valid until{' '}
+                          {activeOffers[activeOfferIndex]?.endDate
+                            ? new Date(activeOffers[activeOfferIndex].endDate).toLocaleDateString()
+                            : '—'}
+                        </p>
+
+                        {activeOffers[activeOfferIndex]?.notes && (
+                          <p className="text-sm text-gray-600 mt-2">{activeOffers[activeOfferIndex].notes}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  </Link>
               <Link
                 to="/vehicles"
                 className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(63,81,181,0.35)] p-8 border border-indigo-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(63,81,181,0.45)] transition"
