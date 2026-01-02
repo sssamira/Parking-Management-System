@@ -408,6 +408,30 @@ const BookSpot = () => {
       setLoading(false);
     }
   };
+  const startCheckoutFromForm = async () => {
+    try {
+      if (!filters.parkingLotName || !filters.startTime || !filters.endTime) {
+        setError('Select parking lot and both times to pay now');
+        return;
+      }
+      const start = new Date(filters.startTime);
+      const end = new Date(filters.endTime);
+      if (end <= start) {
+        setError('End time must be after start time');
+        return;
+      }
+      const hours = Math.ceil((end.getTime() - start.getTime()) / 3600000);
+      const pricePerHour = typeof locationPrice?.price === 'number' ? locationPrice.price : 0;
+      const amount = Math.max(0, pricePerHour * hours);
+      const description = `Booking at ${filters.parkingLotName}`;
+      const resp = await api.post('/payment/create-checkout-session', { amount, currency: 'bdt', description });
+      if (resp.data?.url) {
+        window.location.href = resp.data.url;
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to start payment');
+    }
+  };
 
   const handleSelectSpot = (spot) => {
     setSelectedSpot(spot);
@@ -525,7 +549,25 @@ const BookSpot = () => {
       setLoading(false);
     }
   };
-
+  const startCheckout = async () => {
+    try {
+      if (!selectedSpot) return;
+      if (!bookingData.startTime || !bookingData.endTime) return;
+      const start = new Date(bookingData.startTime);
+      const end = new Date(bookingData.endTime);
+      if (end <= start) return;
+      const hours = Math.ceil((end.getTime() - start.getTime()) / 3600000);
+      const pricePerHour = selectedSpot.computedPricePerHour ?? selectedSpot.pricePerHour ?? 0;
+      const amount = Math.max(0, pricePerHour * hours);
+      const description = `Booking at ${selectedSpot.parkingLotName} - Spot ${selectedSpot.spotNum}`;
+      const resp = await api.post('/payment/create-checkout-session', { amount, currency: 'bdt', description });
+      if (resp.data?.url) {
+        window.location.href = resp.data.url;
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to start payment');
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -776,6 +818,24 @@ const BookSpot = () => {
                 >
                   {loading ? 'Submitting...' : 'Submit to Admin'}
                 </button>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={searchSpots}
+                    className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold"
+                  >
+                    Check Availability
+                  </button>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={startCheckoutFromForm}
+                    className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                  >
+                    Pay Now
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -924,6 +984,14 @@ const BookSpot = () => {
                     >
                       {loading ? 'Booking...' : 'Confirm Booking'}
                     </button>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startCheckout}
+                      className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                    >
+                      Pay Now
+                        </button>
                   </div>
                 </form>
               </div>
