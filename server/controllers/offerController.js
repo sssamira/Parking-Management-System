@@ -92,8 +92,29 @@ export const getOffers = async (req, res) => {
       filter.isActive = req.query.isActive === 'true';
     }
 
-    const offers = await Offer.find(filter).sort({ createdAt: -1 });
-    res.json({ offers });
+    const offers = await Offer.find(filter).sort({ createdAt: -1 }).lean();
+
+    const now = new Date();
+    const offersWithStatus = offers.map((offer) => {
+      const start = new Date(offer.startDate);
+      const end = new Date(offer.endDate);
+
+      let computedStatus = 'active';
+      if (!offer.isActive) {
+        computedStatus = 'inactive';
+      } else if (!Number.isNaN(start.getTime()) && now < start) {
+        computedStatus = 'upcoming';
+      } else if (!Number.isNaN(end.getTime()) && now > end) {
+        computedStatus = 'expired';
+      }
+
+      return {
+        ...offer,
+        computedStatus,
+      };
+    });
+
+    res.json({ offers: offersWithStatus });
   } catch (error) {
     console.error('getOffers error:', error);
     res.status(500).json({ message: 'Failed to fetch offers', error: error.message });

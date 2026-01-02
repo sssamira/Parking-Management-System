@@ -182,6 +182,39 @@ const sendBookingEmail = async ({ to, subject, html }) => {
 
 const normalizeLotName = (name = '') => name.trim().toLowerCase();
 
+const EMERGENCY_VEHICLE_TYPES = new Set(['Emergency Vehicle', 'Fire Truck', 'Ambulance']);
+
+const normalizeLicensePlate = (value) => {
+  if (!value) {
+    return '';
+  }
+  return String(value).trim().toUpperCase();
+};
+
+const isEmergencyVehicleBooking = async (booking) => {
+  try {
+    const plate = normalizeLicensePlate(booking?.vehicle?.licensePlate);
+    if (!plate) {
+      return false;
+    }
+
+    const userId = booking?.user?._id || booking?.user;
+    if (!userId) {
+      return false;
+    }
+
+    // Fetch vehicles from the DB (do not trust request body values)
+    const userDoc = await User.findById(userId).select('vehicles');
+    const vehicles = userDoc?.vehicles || [];
+    const matchedVehicle = vehicles.find((v) => normalizeLicensePlate(v?.licensePlate) === plate);
+    const carType = matchedVehicle?.carType;
+    return Boolean(carType && EMERGENCY_VEHICLE_TYPES.has(carType));
+  } catch (error) {
+    console.error('Emergency vehicle check failed:', error.message);
+    return false;
+  }
+};
+
 const findActiveOfferForLot = async (parkingLotName, referenceDate) => {
   if (!parkingLotName) {
     return null;
@@ -1402,6 +1435,13 @@ export const recordExit = async (req, res) => {
       exit,
       pricePerHour
     );
+
+    // Payment bypass for emergency vehicles (Option A)
+    const isEmergencyExempt = await isEmergencyVehicleBooking(booking);
+    if (isEmergencyExempt) {
+      console.log('🚑 Emergency vehicle detected: bypassing payment (Option A)');
+      actualPrice = 0;
+    }
     
     // Stripe minimum is 50 cents USD
     // Current exchange rate: ৳50 ≈ $0.41, so we need at least ৳70-৳80 to ensure $0.50 USD
@@ -1431,6 +1471,15 @@ export const recordExit = async (req, res) => {
     // Store the amount that will be charged (may be higher if minimum applied)
     booking.chargedAmount = chargeAmount;
 
+    if (isEmergencyExempt) {
+      booking.paymentStatus = 'paid';
+      booking.paymentIntentId = null;
+      booking.paymentMethodId = null;
+      booking.chargedAmount = 0;
+      booking.chargedAt = new Date();
+      booking.paymentError = null;
+    }
+
     // Process payment if user has payment method
     const user = booking.user;
     let paymentResult = null;
@@ -1447,7 +1496,7 @@ export const recordExit = async (req, res) => {
       console.log(`   User object keys: ${Object.keys(user).join(', ')}`);
     }
 
-    if (user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
+    if (!isEmergencyExempt && user && user.hasPaymentMethod && user.stripeCustomerId && user.paymentMethodId) {
       console.log('   ✅ Payment method detected - attempting to charge');
       console.log(`   💳 Charging amount: ৳${chargeAmount.toFixed(2)}${minimumChargeApplied ? ' (minimum charge applied)' : ''}`);
       try {

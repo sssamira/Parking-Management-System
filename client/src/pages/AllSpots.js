@@ -722,7 +722,7 @@ const AllSpots = () => {
                                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             >
                                                 <option value="">Select Type</option>
-                                                {['Sedan', 'SUV', 'Bike', 'Truck'].map(t => <option key={t} value={t}>{t}</option>)}
+                                                {['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'].map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                         <div className="md:col-span-2 flex flex-col sm:flex-row gap-3 justify-end pt-2">

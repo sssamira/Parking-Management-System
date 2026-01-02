@@ -1,6 +1,7 @@
 import ParkingSpot from '../models/ParkingSpots.js';
 import Booking from '../models/Booking.js';
 import Offer from '../models/Offer.js';
+import ParkingLot from '../models/ParkingLot.js';
 
 const normalizeLotName = (name = '') => name.trim().toLowerCase();
 
@@ -927,46 +928,46 @@ export const createParkingSpot = async (req, res) => {
 
 export const getParkingLotSummary = async (req, res) => {
   try {
-    const lots = await ParkingSpot.aggregate([
-      {
-        $addFields: {
-          normalizedParkingLotName: {
-            $trim: {
-              input: {
-                $ifNull: ['$parkingLotName', '$parkinglotName'],
-              },
-            },
-          },
-          normalizedLocation: {
-            $trim: {
-              input: {
-                $ifNull: ['$location', ''],
-              },
-            },
-          },
-        },
-      },
+    // Source of truth: ParkingLot collection (distinct names)
+    // Enrich with derived spot metrics from ParkingSpot.
+    const lots = await ParkingLot.aggregate([
       {
         $match: {
-          normalizedParkingLotName: { $nin: [null, ''] },
+          name: { $nin: [null, ''] },
         },
       },
       {
-        $group: {
-          _id: {
-            parkingLotName: '$normalizedParkingLotName',
-            location: '$normalizedLocation',
+        $lookup: {
+          from: 'parkingspots',
+          localField: 'name',
+          foreignField: 'parkingLotName',
+          as: 'spots',
+        },
+      },
+      {
+        $addFields: {
+          totalSpots: { $size: '$spots' },
+          avgPricePerHour: { $avg: '$spots.pricePerHour' },
+          vehicleTypes: {
+            $setUnion: [
+              {
+                $map: {
+                  input: '$spots',
+                  as: 'spot',
+                  in: '$$spot.vehicleType',
+                },
+              },
+              [],
+            ],
           },
-          totalSpots: { $sum: 1 },
-          vehicleTypes: { $addToSet: '$vehicleType' },
-          avgPricePerHour: { $avg: '$pricePerHour' },
         },
       },
       {
         $project: {
           _id: 0,
-          parkingLotName: '$_id.parkingLotName',
-          location: { $ifNull: ['$_id.location', ''] },
+          parkingLotName: '$name',
+          location: { $ifNull: ['$location', ''] },
+          address: { $ifNull: ['$address', ''] },
           totalSpots: 1,
           avgPricePerHour: 1,
           vehicleTypes: {
@@ -978,14 +979,12 @@ export const getParkingLotSummary = async (req, res) => {
           },
         },
       },
-      { $sort: { parkingLotName: 1, location: 1 } },
+      { $sort: { parkingLotName: 1 } },
     ]);
 
     const formattedLots = lots.map((lot) => ({
       ...lot,
-      avgPricePerHour: typeof lot.avgPricePerHour === 'number'
-        ? Number(lot.avgPricePerHour.toFixed(2))
-        : null,
+      avgPricePerHour: typeof lot.avgPricePerHour === 'number' ? Number(lot.avgPricePerHour.toFixed(2)) : null,
     }));
 
     res.json({ lots: formattedLots });
