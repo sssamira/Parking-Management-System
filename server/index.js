@@ -204,6 +204,7 @@ import adminVehicleRoutes from './routes/adminVehicleRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import mapRoutes from './routes/mapRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 // Middleware to check database connection before processing requests
 // Allow health check and some routes to work even if DB is not connected
@@ -242,6 +243,7 @@ app.use('/api/admin/vehicle', adminVehicleRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/map', mapRoutes);
 app.use('/api/admin/reports', reportRoutes);
+app.use('/api/payment', paymentRoutes);
 
 
 // Error handling middleware
