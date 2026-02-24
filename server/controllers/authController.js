@@ -457,7 +457,7 @@ export const savePaymentMethod = async (req, res) => {
       if (error.code === 'resource_missing') {
         errorMessage = 'Payment method not found. Please make sure your Stripe keys are configured correctly and try entering your card details again.';
       } else {
-        errorMessage = 'Invalid payment method. Please check your card details.';
+      errorMessage = 'Invalid payment method. Please check your card details.';
       }
     } else if (error.type === 'StripeCardError') {
       errorMessage = 'Card error: ' + (error.message || 'Please check your card details.');

@@ -170,7 +170,7 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
       } else if (paymentMethod && paymentMethod.customer && paymentMethod.customer !== customerId) {
         // Attached to different customer, detach and reattach
         console.log(`⚠️  Payment method attached to different customer (${paymentMethod.customer}), reattaching...`);
-        await stripeInstance.paymentMethods.detach(paymentMethodId);
+      await stripeInstance.paymentMethods.detach(paymentMethodId);
         await stripeInstance.paymentMethods.attach(paymentMethodId, {
           customer: customerId,
         });
@@ -179,9 +179,9 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
       } else {
         // Not attached, attach it
         console.log(`🔗 Attaching payment method to customer...`);
-        await stripeInstance.paymentMethods.attach(paymentMethodId, {
-          customer: customerId,
-        });
+      await stripeInstance.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
         console.log(`✅ Payment method attached successfully`);
         paymentMethod = await stripeInstance.paymentMethods.retrieve(paymentMethodId);
       }
@@ -210,11 +210,11 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
 
     // Set as default payment method
     try {
-      await stripeInstance.customers.update(customerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
-      });
+    await stripeInstance.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
       console.log(`✅ Set as default payment method`);
     } catch (updateError) {
       console.warn('⚠️  Warning: Failed to set default payment method:', updateError.message);
@@ -280,13 +280,13 @@ export const attachPaymentMethod = async (customerId, paymentMethodId) => {
       }
     } else if (error.type === 'StripeCardError') {
       throw new Error(`Card error: ${error.message || 'Please check your card details.'}`);
-    }
+      }
     
     // If it's already our custom error message, re-throw it
     if (error.message && (error.message.includes('Payment method not found') || 
                          error.message.includes('Invalid payment method') ||
                          error.message.includes('Invalid payment method ID'))) {
-      throw error;
+    throw error;
     }
     
     throw new Error(`Failed to save payment method: ${error.message || 'Please try again.'}`);

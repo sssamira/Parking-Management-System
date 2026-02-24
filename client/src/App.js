@@ -21,6 +21,12 @@ import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
 import AdminReports from './pages/AdminReports';
+import ContactUs from './pages/ContactUs';
+import RefundPolicy from './pages/ReturnRefundPolicy';
+import Faq from './pages/Faq';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import AboutUs from './pages/AboutUs';
+import TermsConditions from './pages/TermsConditions';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -234,6 +240,12 @@ function App() {
             <Route path="/live-map" element={<LiveMap />} />
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/*" element={<AdminReports />} />
+            <Route path="/contact-us" element={<ContactUs />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/faq" element={<Faq />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/about-us" element={<AboutUs />} />
+            <Route path="/terms-and-conditions" element={<TermsConditions />} />
           </Routes>
         </div>
       </div>

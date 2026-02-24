@@ -1562,10 +1562,10 @@ export const recordExit = async (req, res) => {
           console.log('   ℹ️  Booking marked for manual payment due to invalid payment method');
         } else {
           // Other errors (card declined, insufficient funds, etc.) - mark as failed
-          booking.paymentStatus = 'failed';
-          paymentError = paymentErr.message || 'Payment processing failed';
-          booking.paymentError = paymentError;
-          console.log('   ❌ Payment failed with error:', paymentErr.message);
+        booking.paymentStatus = 'failed';
+        paymentError = paymentErr.message || 'Payment processing failed';
+        booking.paymentError = paymentError;
+        console.log('   ❌ Payment failed with error:', paymentErr.message);
         }
       }
     } else {
@@ -1666,10 +1666,10 @@ export const recordExit = async (req, res) => {
                   console.log('   ℹ️  Booking marked for manual payment due to invalid payment method');
                 } else {
                   // Other errors (card declined, insufficient funds, etc.) - mark as failed
-                  booking.paymentStatus = 'failed';
-                  paymentError = paymentErr.message || 'Payment processing failed';
-                  booking.paymentError = paymentError;
-                  console.log('   ❌ Payment failed with error:', paymentErr.message);
+                booking.paymentStatus = 'failed';
+                paymentError = paymentErr.message || 'Payment processing failed';
+                booking.paymentError = paymentError;
+                console.log('   ❌ Payment failed with error:', paymentErr.message);
                 }
               }
             } else {
