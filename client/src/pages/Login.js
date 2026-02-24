@@ -179,10 +179,10 @@ const Login = () => {
           {/* Main Content - Right below badge */}
           <div className="space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold leading-tight">
-              <span className="text-white">Welcome to the </span>
-              <span className="text-yellow-300">Future</span>
+              <span className="text-white">Welcome to  </span>
+              <span className="text-yellow-300">Park</span>
               <br />
-              <span className="text-yellow-300">Parking</span>
+              <span className="text-yellow-300">Smarter</span>
             </h1>
             
             <p className="text-xl text-white leading-relaxed max-w-md">

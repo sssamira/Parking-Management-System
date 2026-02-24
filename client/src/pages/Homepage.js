@@ -276,7 +276,7 @@ const Homepage = () => {
             <span className="text-white text-2xl">🚗</span>
           </div>
           <div>
-            <p className="text-sm text-indigo-500 font-semibold">Parking Management System</p>
+            <p className="text-sm text-indigo-500 font-semibold">Park Smarter</p>
             <p className="text-xs text-gray-500">Your centralized operations hub</p>
           </div>
         </div>
@@ -390,7 +390,7 @@ const Homepage = () => {
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-4 lg:px-0 mt-10 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-indigo-800">
-          Welcome to Parking Management{user.name ? `, ${user.name}` : ''}
+          Welcome to Park Smarter{user.name ? `, ${user.name}` : ''}
         </h1>
         <p className="mt-3 text-gray-600 text-lg">
           Efficiently manage your parking operations with our comprehensive system. Choose an option below to get started.
@@ -732,7 +732,7 @@ const Homepage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold leading-tight bg-gradient-to-r from-white via-pink-400 to-indigo-400 bg-clip-text text-transparent">
-                    ParkSmarter
+                    Park Smarter
                   </p>
                   <p className="text-[11px] tracking-[0.35em] uppercase text-slate-400 mt-1">
                     Parking redefined
