@@ -400,19 +400,19 @@ const Homepage = () => {
             )}
           </div>
 
-          {/* Message / Chat icon - user: chat with admin; admin: chat with users; new message badge when there are unread messages */}
+          {/* Message / Chat icon - outline bubble + gradient notification badge (green to purple) */}
           {user && user.role !== 'admin' && (
             <Link
               to="/chat"
-              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
               title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
               aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               {chatUnreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
                   {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
                 </span>
               )}
@@ -421,15 +421,15 @@ const Homepage = () => {
           {user && user.role === 'admin' && (
             <Link
               to="/admin/chat"
-              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
               title={chatUnreadCount > 0 ? 'New messages from users' : 'Chat with users'}
               aria-label={chatUnreadCount > 0 ? 'Chat with users (new messages)' : 'Open admin chat'}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               {chatUnreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
                   {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
                 </span>
               )}
