@@ -29,6 +29,7 @@ import Faq from './pages/Faq';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
 import TermsConditions from './pages/TermsConditions';
+import Footer from './components/Footer';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -67,10 +68,9 @@ function App() {
 
   return (
     <Router>
-      <div className="relative min-h-screen">
-
-        {/* Content Container */}
-        <div className="relative z-10">
+      <div className="relative min-h-screen flex flex-col">
+        {/* Content Container - grows to push footer to bottom */}
+        <div className="relative z-10 flex-1 flex flex-col">
           <Routes>
             <Route
               path="/"
@@ -252,6 +252,7 @@ function App() {
             <Route path="/terms-and-conditions" element={<TermsConditions />} />
           </Routes>
         </div>
+        <Footer />
       </div>
     </Router>
   );
