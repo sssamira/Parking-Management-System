@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const ContactUs = () => {
   const [form, setForm] = useState({
@@ -26,6 +28,10 @@ const ContactUs = () => {
       {/* Top banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
         <div className="max-w-5xl mx-auto px-6 py-10 md:py-14">
+          <Link to="/" className="inline-flex items-center gap-3 mb-6 text-white hover:opacity-90 transition">
+            <ParkSmarterLogo size={48} />
+            <span className="text-2xl font-bold">Park Smarter</span>
+          </Link>
           <h1 className="text-3xl md:text-4xl font-semibold">Contact Us</h1>
           <p className="mt-3 max-w-2xl text-sm md:text-base text-indigo-100/90 leading-relaxed">
             We&apos;re here to help. Get in touch with ParkSmarter anytime for questions, feedback,

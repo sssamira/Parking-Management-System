@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const TermsConditions = () => {
   return (
@@ -6,6 +8,10 @@ const TermsConditions = () => {
       {/* Top banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
         <div className="max-w-5xl mx-auto px-6 py-10 md:py-14">
+          <Link to="/" className="inline-flex items-center gap-3 mb-6 text-white hover:opacity-90 transition">
+            <ParkSmarterLogo size={48} />
+            <span className="text-2xl font-bold">Park Smarter</span>
+          </Link>
           <h1 className="text-3xl md:text-4xl font-semibold">Terms &amp; Conditions</h1>
           <p className="mt-3 max-w-2xl text-sm md:text-base text-indigo-100/90 leading-relaxed">
             Please read these Terms &amp; Conditions carefully before using ParkSmarter. By creating

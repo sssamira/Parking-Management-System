@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const OFFER_CARD_THEMES = [
   { bg: 'bg-indigo-50', border: 'border-indigo-100' },
@@ -272,9 +273,7 @@ const Homepage = () => {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-6 lg:px-10 py-5 bg-white/70 backdrop-blur-md border-b border-indigo-100 shadow-sm">
         <div className="flex items-center space-x-3">
-          <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-300/60">
-            <span className="text-white text-2xl">🚗</span>
-          </div>
+          <ParkSmarterLogo size={48} className="flex-shrink-0 shadow-lg" />
           <div>
             <p className="text-sm text-indigo-500 font-semibold">Park Smarter</p>
             <p className="text-xs text-gray-500">Your centralized operations hub</p>
@@ -389,9 +388,12 @@ const Homepage = () => {
 
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-4 lg:px-0 mt-10 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-indigo-800">
-          Welcome to Park Smarter{user.name ? `, ${user.name}` : ''}
-        </h1>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <ParkSmarterLogo size={48} className="flex-shrink-0" />
+          <h1 className="text-3xl md:text-4xl font-bold text-indigo-800">
+            Welcome to Park Smarter{user.name ? `, ${user.name}` : ''}
+          </h1>
+        </div>
         <p className="mt-3 text-gray-600 text-lg">
           Efficiently manage your parking operations with our comprehensive system. Choose an option below to get started.
         </p>

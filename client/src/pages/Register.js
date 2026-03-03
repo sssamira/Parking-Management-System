@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -282,11 +283,14 @@ const Register = () => {
           
           {/* Main Content */}
           <div className="space-y-6">
-            <h1 className="text-5xl md:text-6xl font-bold leading-tight">
-              <span className="text-white">Start Your Journey To </span>
-              <br />
-              <span className="text-yellow-300">Park Smarter </span>
-            </h1>
+            <div className="flex items-center gap-4 flex-wrap">
+              <ParkSmarterLogo size={64} className="flex-shrink-0" />
+              <h1 className="text-5xl md:text-6xl font-bold leading-tight">
+                <span className="text-white">Start Your Journey To </span>
+                <br />
+                <span className="text-yellow-300">Park Smarter </span>
+              </h1>
+            </div>
             
             <p className="text-xl text-white leading-relaxed max-w-md">
               Create your account and unlock powerful parking management tools.

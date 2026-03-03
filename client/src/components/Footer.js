@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import ParkSmarterLogo from './ParkSmarterLogo';
 
 const Footer = () => {
   return (
@@ -9,9 +10,7 @@ const Footer = () => {
           {/* Brand + Description */}
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/60 border border-slate-700">
-                <span className="text-xl">🚗</span>
-              </div>
+              <ParkSmarterLogo size={40} className="flex-shrink-0" />
               <div>
                 <p className="text-2xl font-bold leading-tight bg-gradient-to-r from-white via-pink-400 to-indigo-400 bg-clip-text text-transparent">
                   Park Smarter

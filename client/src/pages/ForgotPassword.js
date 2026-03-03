@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -52,8 +53,8 @@ const ForgotPassword = () => {
         <div className="relative z-10 w-full flex flex-col p-12">
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 bg-purple-200 bg-opacity-80 backdrop-blur-sm rounded-lg px-4 py-2">
-              <span className="text-purple-800 text-lg">⭐</span>
-              <span className="text-purple-800 font-medium">Smart Parking Platform</span>
+              <ParkSmarterLogo size={32} className="flex-shrink-0" />
+              <span className="text-purple-800 font-medium">Park Smarter</span>
             </div>
           </div>
           <div className="space-y-6">

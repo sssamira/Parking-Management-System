@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -205,10 +206,13 @@ const Login = () => {
             </svg>
           </Link>
           
-          {/* Title */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Sign in
-          </h2>
+          {/* Logo + Title */}
+          <div className="flex items-center gap-3 mb-2">
+            <ParkSmarterLogo size={44} className="flex-shrink-0" />
+            <h2 className="text-3xl font-bold text-gray-900">
+              Sign in
+            </h2>
+          </div>
           
           {/* Subtitle */}
           <p className="text-gray-600 mb-8">

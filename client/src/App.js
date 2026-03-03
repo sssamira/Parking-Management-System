@@ -30,6 +30,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
 import TermsConditions from './pages/TermsConditions';
 import Footer from './components/Footer';
+import ParkSmarterLogo from './components/ParkSmarterLogo';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -104,13 +105,16 @@ function App() {
                       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Left Side Content */}
                         <div className="space-y-8">
-                          {/* Main Title */}
-                          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                            <span className="text-white">Park </span>
-                            <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-                              Smarter
-                            </span>
-                          </h1>
+                          {/* Main Title with Logo */}
+                          <div className="flex items-center gap-4">
+                            <ParkSmarterLogo size={72} className="flex-shrink-0" />
+                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+                              <span className="text-white">Park </span>
+                              <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+                                Smarter
+                              </span>
+                            </h1>
+                          </div>
                           
                           {/* Descriptive Text */}
                           <p className="text-xl md:text-2xl text-white leading-relaxed">
@@ -137,11 +141,9 @@ function App() {
                         {/* Right Side - Get Started Panel */}
                         <div className="flex justify-center lg:justify-end">
                           <div className="w-full max-w-md bg-gray-800 bg-opacity-60 backdrop-blur-sm rounded-2xl p-8 border border-purple-500 border-opacity-30 shadow-2xl">
-                            {/* Car Icon */}
+                            {/* Logo at top */}
                             <div className="flex justify-center mb-6">
-                              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center">
-                                <span className="text-white text-4xl">🚗</span>
-                              </div>
+                              <ParkSmarterLogo size={80} className="flex-shrink-0" />
                             </div>
                             
                             {/* Heading */}

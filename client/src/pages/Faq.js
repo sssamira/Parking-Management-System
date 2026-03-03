@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const FAQ_CATEGORIES = ['All', 'General', 'For Drivers', 'Payments'];
 
@@ -89,6 +91,10 @@ const Faq = () => {
       {/* Top banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
         <div className="max-w-5xl mx-auto px-6 py-10 md:py-14">
+          <Link to="/" className="inline-flex items-center gap-3 mb-6 text-white hover:opacity-90 transition">
+            <ParkSmarterLogo size={48} />
+            <span className="text-2xl font-bold">Park Smarter</span>
+          </Link>
           <p className="text-sm font-semibold tracking-[0.25em] uppercase text-indigo-100">
             Frequently Asked Questions
           </p>
