@@ -137,7 +137,15 @@ const AddOffer = () => {
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
     setFormData((prev) => {
-      const nextValue = type === 'checkbox' ? checked : value;
+      let nextValue = type === 'checkbox' ? checked : value;
+      // Clamp discount percentage to 0–100 so user cannot type e.g. 7777777
+      if (name === 'offerPercentage' && nextValue !== '' && nextValue !== undefined) {
+        const num = Number(nextValue);
+        if (Number.isFinite(num)) {
+          if (num < 0) nextValue = '0';
+          else if (num > 100) nextValue = '100';
+        }
+      }
       const updated = { ...prev, [name]: nextValue };
 
       if (name === 'startDate' && prev.endDate && nextValue && prev.endDate < nextValue) {
@@ -361,14 +369,14 @@ const AddOffer = () => {
                 type="number"
                 min="0"
                 max="100"
-                step="0.1"
+                step="1"
                 name="offerPercentage"
                 value={formData.offerPercentage}
                 onChange={handleChange}
                 placeholder="e.g., 15"
                 className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Enter how much to discount this lot's base hourly rate.</p>
+              <p className="text-xs text-gray-500 mt-1">Enter a value from 0 to 100 only.</p>
             </div>
 
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-900">
