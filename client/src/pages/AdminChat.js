@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 
 const AdminChat = () => {
+  const [searchParams] = useSearchParams();
+  const userIdFromUrl = searchParams.get('userId');
   const [threads, setThreads] = useState([]);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -41,6 +44,16 @@ const AdminChat = () => {
     const i = setInterval(fetchThreads, 7000);
     return () => clearInterval(i);
   }, []);
+
+  useEffect(() => {
+    if (userIdFromUrl) {
+      const id = userIdFromUrl.trim();
+      if (id) {
+        setSelected(id);
+        fetchThread(id);
+      }
+    }
+  }, [userIdFromUrl]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
