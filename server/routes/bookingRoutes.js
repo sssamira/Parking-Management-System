@@ -8,7 +8,9 @@ import {
   rejectBooking,
   testEmail,
   recordEntry,
-  recordExit
+  recordExit,
+  cancelBooking,
+  requestRefund
 } from '../controllers/bookingController.js';
 import { protect, admin } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
@@ -27,6 +29,8 @@ const bookingValidation = [
 
 router.post('/', protect, bookingValidation, createBooking);
 router.get('/', protect, getUserBookings);
+router.patch('/:id/cancel', protect, cancelBooking);
+router.post('/:id/request-refund', protect, requestRefund);
 
 // Admin routes
 router.get('/admin/pending', protect, admin, getPendingBookings);

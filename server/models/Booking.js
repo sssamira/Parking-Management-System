@@ -158,6 +158,10 @@ const bookingSchema = new mongoose.Schema({
   paymentError: {
     type: String,
     default: null
+  },
+  refundRequestedAt: {
+    type: Date,
+    default: null
   }
 
 }, { timestamps: true });

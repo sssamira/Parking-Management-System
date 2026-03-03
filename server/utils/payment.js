@@ -411,6 +411,40 @@ export const chargePaymentMethod = async (customerId, paymentMethodId, amount, c
 };
 
 /**
+ * Refund a payment (full or partial) for a PaymentIntent
+ * @param {string} paymentIntentId - Stripe PaymentIntent id (e.g. pi_xxx)
+ * @param {number} [amount] - Amount in major currency (e.g. BDT). If omitted, full refund.
+ * @param {string} currency - 'bdt' or 'usd'
+ * @returns {{ success: boolean, refundId?: string, error?: string }}
+ */
+export const createRefund = async (paymentIntentId, amount, currency = 'bdt') => {
+  const stripeInstance = getStripe();
+  if (!stripeInstance) {
+    return { success: false, error: 'Stripe is not configured.' };
+  }
+  if (!paymentIntentId) {
+    return { success: false, error: 'Payment intent ID is required.' };
+  }
+  try {
+    const params = { payment_intent: paymentIntentId };
+    if (amount != null && amount > 0) {
+      params.amount = Math.round(Number(amount) * 100);
+    }
+    const refund = await stripeInstance.refunds.create(params);
+    return {
+      success: refund.status === 'succeeded' || refund.status === 'pending',
+      refundId: refund.id,
+    };
+  } catch (error) {
+    console.error('Refund error:', error.message);
+    return {
+      success: false,
+      error: error.message || 'Refund failed.',
+    };
+  }
+};
+
+/**
  * Calculate parking fee based on entry and exit times
  */
 export const calculateParkingFee = (entryTime, exitTime, pricePerHour) => {

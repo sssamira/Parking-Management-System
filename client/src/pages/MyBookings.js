@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
+
+const CANCELLABLE_STATUSES = ['pending', 'approved', 'booked', 'search_query'];
+const canCancel = (b) => CANCELLABLE_STATUSES.includes(b.status);
+// Show "Apply for refund" for any cancelled booking (appears after user presses Cancel); backend will say if no payment to refund
+const canRefund = (b) => b.status === 'cancelled' && b.paymentStatus !== 'refunded';
+const NOT_COMPLETED_STATUSES = ['pending', 'approved', 'booked', 'search_query', 'cancelled'];
 
 const MyBookings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isCancelView = searchParams.get('view') === 'cancel';
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   useEffect(() => {
     checkAuthAndFetch();
@@ -74,6 +84,7 @@ const MyBookings = () => {
       completed: 'bg-green-100 text-green-800',
       rejected: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
+      search_query: 'bg-amber-100 text-amber-800',
     };
     return badges[status] || 'bg-gray-100 text-gray-800';
   };
@@ -98,6 +109,42 @@ const MyBookings = () => {
     return `${hours}h ${minutes}m`;
   };
 
+  const handleCancelBooking = async (bookingId) => {
+    setActionLoadingId(bookingId);
+    setError('');
+    setSuccessMessage('');
+    try {
+      await api.patch(`/bookings/${bookingId}/cancel`);
+      await fetchBookings();
+      setSuccessMessage('Booking cancelled. You can apply for a refund below if you were charged.');
+      setTimeout(() => setSuccessMessage(''), 8000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to cancel booking');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRequestRefund = async (bookingId) => {
+    setActionLoadingId(bookingId);
+    setError('');
+    setSuccessMessage('');
+    try {
+      await api.post(`/bookings/${bookingId}/request-refund`);
+      await fetchBookings();
+      setSuccessMessage('Refund request submitted. If eligible, the amount will be credited to your payment method.');
+      setTimeout(() => setSuccessMessage(''), 6000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to process refund');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const displayedBookings = isCancelView
+    ? bookings.filter((b) => NOT_COMPLETED_STATUSES.includes(b.status))
+    : bookings;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] flex items-center justify-center">
@@ -112,34 +159,77 @@ const MyBookings = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] text-gray-800">
       <div className="max-w-7xl mx-auto px-4 lg:px-0 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <Link
             to="/"
             className="text-indigo-600 hover:text-indigo-800 font-medium"
           >
             ← Back to Home
           </Link>
-          <h1 className="text-3xl font-bold text-indigo-900">My Bookings</h1>
-          <div className="w-24"></div> {/* Spacer for centering */}
+          <h1 className="text-3xl font-bold text-indigo-900">
+            {isCancelView ? 'Cancel your booking' : 'My Bookings'}
+          </h1>
+          <div className="flex items-center gap-3">
+            {isCancelView ? (
+              <Link
+                to="/my-bookings"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+              >
+                View all bookings
+              </Link>
+            ) : (
+              <Link
+                to="/my-bookings?view=cancel"
+                className="text-sm font-medium text-red-600 hover:text-red-800"
+              >
+                Cancel a booking
+              </Link>
+            )}
+          </div>
         </div>
+        {isCancelView && (
+          <p className="mb-4 text-gray-600">
+            Only bookings that are not completed are shown below. You can cancel a booking or apply for a refund after cancelling.
+          </p>
+        )}
 
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <p className="text-green-800">{successMessage}</p>
+          </div>
+        )}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-600">{error}</p>
           </div>
         )}
 
-        {bookings.length === 0 ? (
+        {displayedBookings.length === 0 ? (
           <div className="bg-white rounded-lg shadow-lg p-12 text-center">
             <div className="text-6xl mb-4">📋</div>
-            <p className="text-xl text-gray-600">No bookings found</p>
-            <p className="text-gray-500 mt-2">You haven't made any parking bookings yet.</p>
-            <Link
-              to="/book-spot"
-              className="inline-block mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Book a Spot
-            </Link>
+            <p className="text-xl text-gray-600">
+              {isCancelView ? 'No bookings to cancel' : 'No bookings found'}
+            </p>
+            <p className="text-gray-500 mt-2">
+              {isCancelView
+                ? 'You have no pending, approved, or cancelled bookings. Completed and rejected bookings are not shown here.'
+                : "You haven't made any parking bookings yet."}
+            </p>
+            {isCancelView ? (
+              <Link
+                to="/my-bookings"
+                className="inline-block mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                View all bookings
+              </Link>
+            ) : (
+              <Link
+                to="/book-spot"
+                className="inline-block mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Book a Spot
+              </Link>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -168,10 +258,13 @@ const MyBookings = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
                       Payment
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {bookings.map((booking) => (
+                  {displayedBookings.map((booking) => (
                     <tr key={booking._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -308,6 +401,33 @@ const MyBookings = () => {
                         ) : (
                           <div className="text-xs text-gray-400">-</div>
                         )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {canCancel(booking) && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelBooking(booking._id)}
+                              disabled={actionLoadingId === booking._id}
+                              className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {actionLoadingId === booking._id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          )}
+                          {canRefund(booking) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRequestRefund(booking._id)}
+                              disabled={actionLoadingId === booking._id}
+                              className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 disabled:opacity-50"
+                            >
+                              {actionLoadingId === booking._id ? 'Processing...' : 'Apply for refund'}
+                            </button>
+                          )}
+                          {booking.status === 'cancelled' && booking.paymentStatus === 'refunded' && (
+                            <span className="text-xs text-indigo-600 font-medium">Refunded</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

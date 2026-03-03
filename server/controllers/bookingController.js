@@ -3,7 +3,7 @@ import ParkingSpot from '../models/ParkingSpots.js';
 import User from '../models/User.js';
 import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
-import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, calculateParkingFee } from '../utils/payment.js';
+import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, createRefund, calculateParkingFee } from '../utils/payment.js';
 import Offer from '../models/Offer.js';
 
 // Build a mail transporter if SMTP env vars are set (lazy initialization)
@@ -505,6 +505,122 @@ export const getUserBookings = async (req, res) => {
     return res.status(500).json({ 
       message: 'Server error while fetching bookings',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+const CANCELLABLE_STATUSES = ['pending', 'approved', 'booked', 'search_query'];
+
+// @desc    Cancel a booking (user, own booking only)
+// @route   PATCH /api/bookings/:id/cancel
+// @access  Private
+export const cancelBooking = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const bookingId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+
+    const booking = await Booking.findOne({
+      _id: new mongoose.Types.ObjectId(bookingId),
+      user: new mongoose.Types.ObjectId(userId),
+    });
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    if (!CANCELLABLE_STATUSES.includes(booking.status)) {
+      return res.status(400).json({
+        message: `This booking cannot be cancelled (current status: ${booking.status}).`,
+      });
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+
+    return res.status(200).json({
+      message: 'Booking cancelled successfully.',
+      booking: { _id: booking._id, status: booking.status },
+    });
+  } catch (err) {
+    console.error('Cancel booking error:', err.message);
+    return res.status(500).json({
+      message: 'Server error while cancelling booking',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    });
+  }
+};
+
+// @desc    Request refund for a cancelled (and paid) booking; processes Stripe refund when possible
+// @route   POST /api/bookings/:id/request-refund
+// @access  Private
+export const requestRefund = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const bookingId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+
+    const booking = await Booking.findOne({
+      _id: new mongoose.Types.ObjectId(bookingId),
+      user: new mongoose.Types.ObjectId(userId),
+    });
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    if (booking.paymentStatus === 'refunded') {
+      return res.status(400).json({ message: 'This booking has already been refunded.' });
+    }
+    if (booking.status !== 'cancelled') {
+      return res.status(400).json({
+        message: 'Refund is only available for cancelled bookings. Please cancel the booking first.',
+      });
+    }
+    if (booking.paymentStatus !== 'paid') {
+      return res.status(400).json({
+        message: 'No payment was made for this booking, so there is nothing to refund.',
+      });
+    }
+
+    booking.refundRequestedAt = new Date();
+
+    if (booking.paymentIntentId) {
+      const amountToRefund = booking.chargedAmount || booking.actualPrice || 0;
+      const refundResult = await createRefund(
+        booking.paymentIntentId,
+        amountToRefund,
+        'bdt'
+      );
+      if (refundResult.success) {
+        booking.paymentStatus = 'refunded';
+        await booking.save();
+        return res.status(200).json({
+          message: 'Refund processed successfully. The amount will be credited back to your payment method.',
+          booking: { _id: booking._id, paymentStatus: booking.paymentStatus },
+        });
+      }
+      return res.status(400).json({
+        message: refundResult.error || 'Refund could not be processed. Please contact support.',
+      });
+    }
+
+    await booking.save();
+    return res.status(200).json({
+      message: 'Refund request recorded. Our team will process it manually (no automatic payment link for this booking).',
+      booking: { _id: booking._id, refundRequestedAt: booking.refundRequestedAt },
+    });
+  } catch (err) {
+    console.error('Request refund error:', err.message);
+    return res.status(500).json({
+      message: 'Server error while processing refund request',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
     });
   }
 };
