@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getMe, googleAuth, savePaymentMethod, removePaymentMethod } from '../controllers/authController.js';
+import { register, login, getMe, googleAuth, savePaymentMethod, removePaymentMethod, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 import { body } from 'express-validator';
@@ -47,9 +47,22 @@ const loginValidation = [
   handleValidationErrors,
 ];
 
+const forgotPasswordValidation = [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  handleValidationErrors,
+];
+
+const resetPasswordValidation = [
+  body('token').notEmpty().withMessage('Reset token is required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  handleValidationErrors,
+];
+
 // Routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
+router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
+router.post('/reset-password', resetPasswordValidation, resetPassword);
 router.post('/google', googleAuth);
 router.get('/me', protect, getMe);
 router.post('/payment-method', protect, savePaymentMethod);

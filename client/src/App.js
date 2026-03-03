@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Homepage from './pages/Homepage';
 import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
@@ -221,6 +223,8 @@ function App() {
             />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/book-spot" element={<BookSpot />} />
             <Route path="/all-spots" element={<AllSpots />} />
