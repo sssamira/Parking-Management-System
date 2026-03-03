@@ -5,11 +5,31 @@ import api from '../utils/api';
 const AdminChat = () => {
   const [searchParams] = useSearchParams();
   const userIdFromUrl = searchParams.get('userId');
+  const nameFromUrl = searchParams.get('name');
+  const emailFromUrl = searchParams.get('email');
   const [threads, setThreads] = useState([]);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const endRef = useRef(null);
+
+  const isSingleThreadFromBookings = Boolean(userIdFromUrl?.trim());
+  const threadsToShow = isSingleThreadFromBookings
+    ? (() => {
+        const existing = threads.find(t => String(t.userId) === String(userIdFromUrl));
+        if (existing) return [existing];
+        return [{
+          userId: userIdFromUrl,
+          user: {
+            name: nameFromUrl ? decodeURIComponent(nameFromUrl) : 'User',
+            email: emailFromUrl ? decodeURIComponent(emailFromUrl) : ''
+          },
+          lastMessage: '',
+          lastAt: null,
+          unreadForAdmin: 0
+        }];
+      })()
+    : threads;
 
   const ensureAdmin = () => {
     try {
@@ -84,9 +104,11 @@ const AdminChat = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff]">
       <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow p-3">
-          <div className="font-semibold text-indigo-800 mb-2">User Threads</div>
+          <div className="font-semibold text-indigo-800 mb-2">
+            {isSingleThreadFromBookings ? 'Chat with' : 'User Threads'}
+          </div>
           <div className="space-y-2">
-            {threads.map(t => (
+            {threadsToShow.map(t => (
               <button
                 key={String(t.userId)}
                 onClick={() => { setSelected(String(t.userId)); fetchThread(String(t.userId)); }}
@@ -104,7 +126,7 @@ const AdminChat = () => {
         <div className="md:col-span-2 bg-white rounded-xl shadow p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="font-semibold text-indigo-800">Chat</div>
-            <div className="text-sm text-gray-500">{selected ? threads.find(x => String(x.userId) === String(selected))?.user?.email : ''}</div>
+            <div className="text-sm text-gray-500">{selected ? (threads.find(x => String(x.userId) === String(selected))?.user?.email ?? threadsToShow.find(x => String(x.userId) === String(selected))?.user?.email) : ''}</div>
           </div>
           <div className="h-[60vh] overflow-y-auto border rounded p-3 bg-indigo-50">
             {messages.map(m => (

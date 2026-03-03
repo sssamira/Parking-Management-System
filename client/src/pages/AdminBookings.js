@@ -415,7 +415,7 @@ const AdminBookings = () => {
                             {/* Chat with this user - every row */}
                             {userId && String(userId) !== 'Unknown' && (
                               <Link
-                                to={`/admin/chat?userId=${encodeURIComponent(userId)}`}
+                                to={`/admin/chat?userId=${encodeURIComponent(userId)}&name=${encodeURIComponent(userObj?.name || 'User')}&email=${encodeURIComponent(userObj?.email || '')}`}
                                 className="inline-flex items-center justify-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded text-xs hover:bg-indigo-700 transition"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

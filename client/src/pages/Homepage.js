@@ -54,7 +54,7 @@ const Homepage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch chat unread count for non-admin users (for new-message badge on chat icon)
+  // Fetch chat unread count for badge on chat icon (user: from admin; admin: from users)
   useEffect(() => {
     const u = (() => {
       try {
@@ -64,7 +64,7 @@ const Homepage = () => {
         return {};
       }
     })();
-    if (!u?.role || u.role === 'admin') return;
+    if (!u?.role) return;
     const fetchChatUnread = async () => {
       try {
         const res = await api.get('/chat/unread-count');
@@ -400,13 +400,30 @@ const Homepage = () => {
             )}
           </div>
 
-          {/* Message / Chat icon - user side only (hidden for admin); new message badge when admin sent messages */}
+          {/* Message / Chat icon - user: chat with admin; admin: chat with users; new message badge when there are unread messages */}
           {user && user.role !== 'admin' && (
             <Link
               to="/chat"
               className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
               title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
               aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/chat"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg text-indigo-700 border border-indigo-200 bg-white hover:bg-indigo-50 transition font-semibold"
+              title={chatUnreadCount > 0 ? 'New messages from users' : 'Chat with users'}
+              aria-label={chatUnreadCount > 0 ? 'Chat with users (new messages)' : 'Open admin chat'}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
