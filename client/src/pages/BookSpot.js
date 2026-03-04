@@ -633,8 +633,7 @@ const BookSpot = () => {
       } else {
         alert('Payment initiation failed: No redirect URL received.');
       }
-        window.location.href = resp.data.url;
-      }
+        
     } catch (err) {
       console.error('Payment Error:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to start payment';
