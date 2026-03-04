@@ -149,6 +149,11 @@ const MyBookings = () => {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
+  const clockIconGray = (
+    <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
   const carIcon = (
     <svg className="w-5 h-5 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8m-8 4h8m-8 4h8M5 7v10a1 1 0 001 1h12a1 1 0 001-1V7" />
@@ -156,16 +161,16 @@ const MyBookings = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f5f3ff] to-[#ede9fe] text-gray-800">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <Link to="/" className="text-purple-700 hover:text-purple-900 font-medium">
+    <div className="min-h-screen bg-gradient-to-b from-[#f5f3ff] to-[#ede9fe] text-gray-800 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 md:py-8">
+        <div className="mb-6 md:mb-8 flex flex-wrap items-center justify-between gap-4">
+          <Link to="/" className="text-purple-700 hover:text-purple-900 font-medium shrink-0">
             ← Back to Home
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold text-center flex-1 min-w-[200px] bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center flex-1 min-w-0 bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
             {isCancelView ? 'Cancel your booking' : 'My Bookings'}
           </h1>
-          <div className="w-[140px] flex justify-end">
+          <div className="w-[140px] flex justify-end shrink-0">
             {isCancelView ? (
               <Link to="/my-bookings" className="text-sm font-medium text-purple-600 hover:text-purple-800">
                 View all
@@ -219,114 +224,175 @@ const MyBookings = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-0 w-full">
+            {/* Shared grid template — full width, 8 columns */}
+            <style>{`
+              .my-bookings-grid { display: grid; gap: 0.75rem 1.25rem; align-items: center; width: 100%; }
+              .my-bookings-grid .col-cell { min-width: 0; overflow: hidden; }
+              @media (min-width: 768px) {
+                .my-bookings-grid {
+                  grid-template-columns: minmax(0,1.2fr) minmax(172px,1.45fr) minmax(108px,0.95fr) minmax(68px,0.5fr) minmax(82px,0.65fr) minmax(98px,0.8fr) minmax(98px,0.8fr) minmax(120px,auto);
+                }
+              }
+            `}</style>
+
+            {/* Column headers bar — light purple, full width */}
+            <div className="my-bookings-grid px-4 sm:px-5 lg:px-6 py-3 bg-purple-50 rounded-t-2xl border border-b-0 border-purple-100 hidden md:grid">
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Parking Spot</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Booking Period</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Entry/Exit</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Duration</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Amount</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Status</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Payment</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell text-center">Action</div>
+            </div>
+
+            <div className="space-y-3 pt-1">
             {displayedBookings.map((booking) => {
               const locationName = booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || booking.parkingLotName || booking.location || 'N/A';
-              const spotLabel = booking.parkingSpot?.spotNum ? `Spot: ${booking.parkingSpot.spotNum}` : 'Not assigned';
+              const spotLabel = booking.parkingSpot?.spotNum ? `${booking.parkingSpot.spotNum}` : 'Not assigned';
+              const spotNo = booking.parkingSpot?.floor != null ? `No: ${booking.parkingSpot.floor}` : '';
               const vehicleType = booking.vehicle?.carType || booking.vehicleType || 'Car';
               const isCompleted = booking.status === 'completed';
               const isCancelled = booking.status === 'cancelled';
               const hasEntryExit = booking.actualEntryTime || booking.actualExitTime;
-              const duration = booking.actualEntryTime && booking.actualExitTime
-                ? calculateDuration(booking.actualEntryTime, booking.actualExitTime)
-                : '-';
+              const durationParts = booking.actualEntryTime && booking.actualExitTime
+                ? calculateDuration(booking.actualEntryTime, booking.actualExitTime).split(' ')
+                : ['-', ''];
               const displayPrice = booking.actualPrice > 0 ? booking.actualPrice : (booking.price || 0);
               const isEstimated = !booking.actualExitTime || booking.actualPrice <= 0;
 
               return (
                 <div
                   key={booking._id}
-                  className="bg-gradient-to-r from-purple-50 to-white rounded-2xl shadow-md border border-purple-100/50 overflow-hidden"
+                  className="bg-white rounded-2xl shadow-md border border-purple-100 overflow-hidden w-full"
                 >
-                  <div className="p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                    {/* Location & vehicle */}
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="my-bookings-grid px-4 sm:px-5 lg:px-6 py-5 gap-4 md:gap-6">
+                    {/* 1. Parking Spot — only location/spot/vehicle */}
+                    <div className="col-cell flex items-start gap-2 overflow-hidden">
                       {locationIcon}
-                      <div>
-                        <p className="font-semibold text-gray-900">{locationName}</p>
-                        <p className="text-sm text-gray-600">{spotLabel}</p>
-                        <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-600">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">{locationName}</p>
+                        <p className="text-sm text-gray-600 truncate">{spotLabel}{spotNo ? `, ${spotNo}` : ''}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-sm text-gray-600">
                           {carIcon}
-                          <span>{vehicleType}</span>
+                          <span className="truncate">{vehicleType}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Date / Entry–Exit */}
-                    <div className="flex items-start gap-3 flex-shrink-0">
+                    {/* 2. Booking Period — only calendar + DATE or ENTRY/EXIT dates */}
+                    <div className="col-cell flex items-start gap-2 overflow-hidden">
                       {calendarIcon}
-                      <div className="text-sm text-gray-700">
+                      <div className="min-w-0 flex-1 text-sm text-gray-800">
                         {booking.startTime && booking.endTime ? (
                           <>
                             <p className="text-xs font-semibold text-gray-500 uppercase">DATE</p>
-                            <p>{formatDate(booking.startTime)}</p>
-                            <p className="mt-0.5 text-gray-500">to {formatDate(booking.endTime)}</p>
+                            <p className="truncate">{formatDate(booking.startTime)}</p>
                           </>
                         ) : hasEntryExit ? (
                           <>
                             <p className="text-xs font-semibold text-gray-500 uppercase">ENTRY</p>
-                            <p>{booking.actualEntryTime ? formatDate(booking.actualEntryTime) : '—'}</p>
-                            <p className="text-xs font-semibold text-gray-500 uppercase mt-2">EXIT</p>
-                            <p>{booking.actualExitTime ? formatDate(booking.actualExitTime) : '—'}</p>
+                            <p className="truncate">{booking.actualEntryTime ? formatDate(booking.actualEntryTime) : '—'}</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mt-1.5">EXIT</p>
+                            <p className="truncate">{booking.actualExitTime ? formatDate(booking.actualExitTime) : '—'}</p>
                           </>
                         ) : (
                           <p className="text-gray-500">Not specified</p>
                         )}
-                        {hasEntryExit && (
-                          <div className="mt-2 space-y-0.5">
-                            {booking.actualEntryTime && (
-                              <p className="flex items-center gap-1.5 text-green-600 text-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Entry: {formatTime(booking.actualEntryTime)}
-                              </p>
-                            )}
-                            {booking.actualExitTime && (
-                              <p className="flex items-center gap-1.5 text-purple-600 text-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Exit: {formatTime(booking.actualExitTime)}
-                              </p>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
 
-                    {/* Duration & status */}
-                    <div className="flex items-start gap-3 flex-shrink-0">
-                      {clockIcon}
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-900">{duration}</p>
-                        {!isCompleted && !isCancelled && (
-                          <p className="text-gray-500 text-xs mt-0.5">Not started</p>
-                        )}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {isCompleted && (
-                            <>
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Completed</span>
-                              {booking.paymentStatus === 'paid' && (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Paid</span>
-                              )}
-                            </>
+                    {/* 3. Entry/Exit — only "Not started" or Entry/Exit times with dots */}
+                    <div className="col-cell flex items-start gap-2 overflow-hidden">
+                      {hasEntryExit ? (
+                        <div className="min-w-0 flex-1 space-y-0.5 text-sm">
+                          {booking.actualEntryTime && (
+                            <p className="flex items-center gap-1.5 text-green-600 text-xs truncate">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" aria-hidden /> Entry: {formatTime(booking.actualEntryTime)}
+                            </p>
                           )}
-                          {isCancelled && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Cancelled</span>
+                          {booking.actualExitTime && (
+                            <p className="flex items-center gap-1.5 text-purple-600 text-xs truncate">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 flex-shrink-0" aria-hidden /> Exit: {formatTime(booking.actualExitTime)}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 min-w-0">
+                          {clockIconGray}
+                          <p className="text-sm text-gray-500">Not started</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 4. Duration — fixed-height slot so icon + value are at the same place every row */}
+                    <div className="col-cell flex items-start overflow-hidden">
+                      <div className="flex items-center gap-2 h-12 min-w-0">
+                        {clockIcon}
+                        <div className="text-sm min-w-0 flex flex-col justify-center leading-tight">
+                          {durationParts[0] === '-' ? (
+                            <span className="font-medium text-gray-900">-</span>
+                          ) : (
+                            <>
+                              <span className="font-medium text-gray-900">{durationParts[0]}</span>
+                              {durationParts[1] ? <span className="text-gray-700">{durationParts[1]}</span> : null}
+                            </>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="flex-shrink-0 text-sm">
+                    {/* 5. Amount — only ৳ amount and (estimated) or Est: */}
+                    <div className="col-cell text-sm overflow-hidden">
                       <p className="font-semibold text-gray-900">৳{Number(displayPrice).toFixed(2)}</p>
                       {isEstimated && <p className="text-xs text-gray-500">(estimated)</p>}
-                      {isCompleted && booking.price !== booking.actualPrice && booking.actualPrice > 0 && (
+                      {isCompleted && booking.price != null && booking.price !== booking.actualPrice && booking.actualPrice > 0 && (
                         <p className="text-xs text-gray-500">Est: ৳{(booking.price || 0).toFixed(2)}</p>
-                      )}
-                      {booking.paymentStatus === 'paid' && booking.chargedAt && (
-                        <p className="text-xs text-green-600 mt-0.5">Paid: {formatTime(booking.chargedAt)}</p>
                       )}
                     </div>
 
-                    {/* Action */}
-                    <div className="flex-shrink-0 md:ml-auto">
+                    {/* 6. Status — only status badge (icon + text in one pill), centered in column */}
+                    <div className="col-cell flex justify-center overflow-hidden">
+                      {isCancelled && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500 text-white whitespace-nowrap">
+                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Cancelled
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-500 text-white whitespace-nowrap">
+                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Completed
+                        </span>
+                      )}
+                      {!isCompleted && !isCancelled && <span className="text-xs text-gray-400">—</span>}
+                    </div>
+
+                    {/* 7. Payment — only Paid badge + time or empty, centered in column */}
+                    <div className="col-cell flex flex-col items-center overflow-hidden">
+                      {booking.paymentStatus === 'paid' ? (
+                        <>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-500 text-white whitespace-nowrap">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Paid
+                          </span>
+                          {booking.chargedAt && <p className="text-xs text-gray-500 mt-0.5">Paid: {formatTime(booking.chargedAt)}</p>}
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </div>
+
+                    {/* 8. Action — only button or empty, centered in column */}
+                    <div className="col-cell flex justify-center overflow-hidden">
                       {canCancel(booking) && !isCancelView && (
                         <button
                           type="button"
@@ -355,6 +421,7 @@ const MyBookings = () => {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
