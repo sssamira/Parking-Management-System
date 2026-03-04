@@ -31,6 +31,7 @@ import AboutUs from './pages/AboutUs';
 import TermsConditions from './pages/TermsConditions';
 import Footer from './components/Footer';
 import ParkSmarterLogo from './components/ParkSmarterLogo';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -69,6 +70,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <div className="relative min-h-screen flex flex-col">
         {/* Content Container - grows to push footer to bottom */}
         <div className="relative z-10 flex-1 flex flex-col">
