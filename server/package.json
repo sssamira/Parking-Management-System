@@ -10,8 +10,6 @@
     "seed": "node scripts/init-database.js",
     "reset": "node scripts/reset-database_ForLots.js",
     "check": "node scripts/check-parking-data.js"
-
-    
   },
   "keywords": [
     "express",
@@ -33,6 +31,7 @@
     "nodemailer": "^6.9.16",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "sslcommerz-lts": "^1.2.0",
     "stripe": "^17.7.0"
   },
   "devDependencies": {
