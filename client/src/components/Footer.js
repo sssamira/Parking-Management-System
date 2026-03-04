@@ -16,7 +16,7 @@ const Footer = () => {
                   Park Smarter
                 </p>
                 <p className="text-[11px] tracking-[0.35em] uppercase text-slate-400 mt-1">
-                  Parking redefined
+                  PARKING REDEFINED.
                 </p>
               </div>
             </div>
