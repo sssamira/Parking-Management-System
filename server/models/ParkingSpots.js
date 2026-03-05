@@ -29,8 +29,8 @@ const parkingSpotSchema = new mongoose.Schema({
   }, 
   vehicleType: { 
     type: String, 
-    enum: ['Car','Bike','All'], 
-    default: 'All' 
+    enum: ['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles'], 
+    default: 'Car' 
   },
   pricePerHour: { 
     type: Number, 

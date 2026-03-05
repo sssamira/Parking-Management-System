@@ -183,7 +183,7 @@ const sendBookingEmail = async ({ to, subject, html }) => {
 
 const normalizeLotName = (name = '') => name.trim().toLowerCase();
 
-const EMERGENCY_VEHICLE_TYPES = new Set(['Emergency Vehicle', 'Fire Truck', 'Ambulance']);
+const EMERGENCY_VEHICLE_TYPES = new Set(['Emergency Vehicle', 'Fire Truck', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles']);
 
 const normalizeLicensePlate = (value) => {
   if (!value) {

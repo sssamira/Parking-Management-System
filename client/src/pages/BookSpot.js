@@ -773,8 +773,12 @@ const BookSpot = () => {
                   >
                     <option value="">All Types</option>
                     <option value="Car">Car</option>
+                    <option value="Bus">Bus</option>
                     <option value="Bike">Bike</option>
-                    <option value="All">All</option>
+                    <option value="Vaan">Vaan</option>
+                    <option value="Ambulance">Ambulance</option>
+                    <option value="Fire Ambulance">Fire Ambulance</option>
+                    <option value="Security Force Vehicles">Security Force Vehicles</option>
                   </select>
                 </div>
 
@@ -1030,15 +1034,13 @@ const BookSpot = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Type</option>
-                      <option value="Sedan">Sedan</option>
-                      <option value="SUV">SUV</option>
-                      <option value="Hatchback">Hatchback</option>
-                      <option value="Coupe">Coupe</option>
-                      <option value="Convertible">Convertible</option>
-                      <option value="Truck">Truck</option>
-                      <option value="Van">Van</option>
-                      <option value="Motorcycle">Motorcycle</option>
-                      <option value="Other">Other</option>
+                      <option value="Car">Car</option>
+                      <option value="Bus">Bus</option>
+                      <option value="Bike">Bike</option>
+                      <option value="Vaan">Vaan</option>
+                      <option value="Ambulance">Ambulance</option>
+                      <option value="Fire Ambulance">Fire Ambulance</option>
+                      <option value="Security Force Vehicles">Security Force Vehicles</option>
                     </select>
                   </div>
 

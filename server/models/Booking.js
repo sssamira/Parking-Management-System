@@ -67,7 +67,7 @@ const bookingSchema = new mongoose.Schema({
   },
   vehicleType: {
     type: String,
-    enum: ['Car', 'Bike', 'All', ''],
+    enum: ['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles', ''],
     default: ''
   },
   date: {
