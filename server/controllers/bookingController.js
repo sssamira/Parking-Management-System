@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import ParkingSpot from '../models/ParkingSpots.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import { getOrCreateStripeCustomer, attachPaymentMethod, chargePaymentMethod, createRefund, calculateParkingFee } from '../utils/payment.js';
@@ -538,8 +539,36 @@ export const cancelBooking = async (req, res) => {
       });
     }
 
+    const bookingDate = booking.startTime || booking.date || booking.endTime;
+    if (bookingDate) {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      if (new Date(bookingDate) < startOfToday) {
+        return res.status(400).json({
+          message: 'Bookings for past dates cannot be cancelled. Only future bookings can be cancelled.',
+        });
+      }
+    }
+
     booking.status = 'cancelled';
     await booking.save();
+
+    const userName = req.user?.name || 'A user';
+    const userEmail = req.user?.email || '';
+    const parkingLotName = booking.parkingLotName || booking.location || 'a parking spot';
+
+    await Notification.create({
+      forRole: 'admin',
+      type: 'booking_cancelled',
+      title: 'Booking cancelled',
+      message: `${userName} has cancelled their booking${userEmail ? ` (${userEmail})` : ''}. Location: ${parkingLotName}.`,
+      link: '/admin/bookings',
+      bookingId: booking._id,
+      userId: req.user?._id,
+      userName: req.user?.name || null,
+      userEmail: req.user?.email || null,
+      read: false,
+    });
 
     return res.status(200).json({
       message: 'Booking cancelled successfully.',

@@ -4,6 +4,14 @@ import api from '../utils/api';
 
 const CANCELLABLE_STATUSES = ['pending', 'approved', 'booked', 'search_query'];
 const canCancel = (b) => CANCELLABLE_STATUSES.includes(b.status);
+
+const isBookingInPast = (b) => {
+  const d = b.startTime || b.date || b.endTime;
+  if (!d) return false;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  return new Date(d) < startOfToday;
+};
 // Show "Apply for refund" for any cancelled booking (appears after user presses Cancel); backend will say if no payment to refund
 const canRefund = (b) => b.status === 'cancelled' && b.paymentStatus !== 'refunded';
 const NOT_COMPLETED_STATUSES = ['pending', 'approved', 'booked', 'search_query', 'cancelled'];
@@ -398,7 +406,7 @@ const MyBookings = () => {
 
                     {/* 8. Action — only button or empty, centered in column */}
                     <div className="col-cell flex justify-center overflow-hidden">
-                      {canCancel(booking) && (
+                      {canCancel(booking) && !isBookingInPast(booking) && (
                         <button
                           type="button"
                           onClick={() => handleCancelBooking(booking._id)}
@@ -407,6 +415,9 @@ const MyBookings = () => {
                         >
                           {actionLoadingId === booking._id ? 'Cancelling...' : 'Cancel'}
                         </button>
+                      )}
+                      {canCancel(booking) && isBookingInPast(booking) && (
+                        <span className="text-xs text-gray-500">Past booking</span>
                       )}
                       {canRefund(booking) && (
                         <button

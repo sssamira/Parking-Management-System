@@ -155,6 +155,23 @@ const Homepage = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      const u = (() => {
+        try {
+          const s = localStorage.getItem('user');
+          return s ? JSON.parse(s) : {};
+        } catch {
+          return {};
+        }
+      })();
+
+      if (u?.role === 'admin') {
+        const res = await api.get('/admin/notifications');
+        const list = res.data?.notifications || [];
+        setNotifications(list);
+        setUnreadCount(list.filter(n => !n.read).length);
+        return;
+      }
+
       // Fetch user bookings for booking-related notifications
       const bookingsResponse = await api.get('/bookings');
       const bookings = bookingsResponse.data?.bookings || [];
@@ -275,18 +292,48 @@ const Homepage = () => {
     window.location.reload();
   };
 
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+  const markAsRead = async (notificationId) => {
+    setNotifications(prev =>
+      prev.map(notif =>
         notif.id === notificationId ? { ...notif, read: true } : notif
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
+    const u = (() => {
+      try {
+        const s = localStorage.getItem('user');
+        return s ? JSON.parse(s) : {};
+      } catch {
+        return {};
+      }
+    })();
+    if (u?.role === 'admin') {
+      try {
+        await api.patch(`/admin/notifications/${notificationId}/read`);
+      } catch (e) {
+        console.error('Mark notification read:', e);
+      }
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
     setUnreadCount(0);
+    const u = (() => {
+      try {
+        const s = localStorage.getItem('user');
+        return s ? JSON.parse(s) : {};
+      } catch {
+        return {};
+      }
+    })();
+    if (u?.role === 'admin') {
+      try {
+        await api.patch('/admin/notifications/read-all');
+      } catch (e) {
+        console.error('Mark all read:', e);
+      }
+    }
   };
 
   const toggleNotifications = () => {
@@ -388,6 +435,11 @@ const Homepage = () => {
                             {notification.type === 'pending' && (
                               <span className="flex-shrink-0 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                                 Pending
+                              </span>
+                            )}
+                            {notification.type === 'booking_cancelled' && (
+                              <span className="flex-shrink-0 text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                                Cancelled
                               </span>
                             )}
                           </div>
