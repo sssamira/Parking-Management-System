@@ -159,6 +159,11 @@ const MyBookings = () => {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8m-8 4h8m-8 4h8M5 7v10a1 1 0 001 1h12a1 1 0 001-1V7" />
     </svg>
   );
+  const bikeIcon = (
+    <svg className="w-5 h-5 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 18h2m-2 0v-4l4 2v-2m-4-2v-4l4 2m4-4v4l4-2m-4 2v4" />
+    </svg>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f5f3ff] to-[#ede9fe] text-gray-800 w-full">
@@ -236,16 +241,16 @@ const MyBookings = () => {
               }
             `}</style>
 
-            {/* Column headers bar — light purple, full width */}
-            <div className="my-bookings-grid px-4 sm:px-5 lg:px-6 py-3 bg-purple-50 rounded-t-2xl border border-b-0 border-purple-100 hidden md:grid">
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Parking Spot</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Booking Period</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Entry/Exit</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Duration</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Amount</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Status</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell">Payment</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide col-cell text-center">Action</div>
+            {/* Column headers bar — matches cancel page design */}
+            <div className="my-bookings-grid px-4 sm:px-5 lg:px-6 py-3 bg-white/80 rounded-t-2xl border border-b border-gray-200 hidden md:grid">
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Parking Spot</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Booking Period</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Entry/Exit</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Duration</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Amount</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Status</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Payment</div>
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell text-center">Action</div>
             </div>
 
             <div className="space-y-3 pt-1">
@@ -266,7 +271,7 @@ const MyBookings = () => {
               return (
                 <div
                   key={booking._id}
-                  className="bg-white rounded-2xl shadow-md border border-purple-100 overflow-hidden w-full"
+                  className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden w-full"
                 >
                   <div className="my-bookings-grid px-4 sm:px-5 lg:px-6 py-5 gap-4 md:gap-6">
                     {/* 1. Parking Spot — only location/spot/vehicle */}
@@ -276,7 +281,7 @@ const MyBookings = () => {
                         <p className="font-semibold text-gray-900 truncate">{locationName}</p>
                         <p className="text-sm text-gray-600 truncate">{spotLabel}{spotNo ? `, ${spotNo}` : ''}</p>
                         <div className="flex items-center gap-1.5 mt-0.5 text-sm text-gray-600">
-                          {carIcon}
+                          {/^bike|motorcycle|bicycle$/i.test(String(vehicleType)) ? bikeIcon : carIcon}
                           <span className="truncate">{vehicleType}</span>
                         </div>
                       </div>
@@ -393,12 +398,12 @@ const MyBookings = () => {
 
                     {/* 8. Action — only button or empty, centered in column */}
                     <div className="col-cell flex justify-center overflow-hidden">
-                      {canCancel(booking) && !isCancelView && (
+                      {canCancel(booking) && (
                         <button
                           type="button"
                           onClick={() => handleCancelBooking(booking._id)}
                           disabled={actionLoadingId === booking._id}
-                          className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 disabled:opacity-50"
+                          className="px-4 py-2 text-sm font-semibold text-red-800 bg-red-100 rounded-xl hover:bg-red-200 disabled:opacity-50 transition"
                         >
                           {actionLoadingId === booking._id ? 'Cancelling...' : 'Cancel'}
                         </button>
@@ -425,39 +430,39 @@ const MyBookings = () => {
           </div>
         )}
 
-        {/* Information Box */}
-        <div className="mt-8 bg-purple-50/80 border border-purple-200 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-purple-900 mb-3">ℹ️ How It Works</h3>
-          <div className="space-y-2 text-sm text-purple-800">
-            <div className="flex items-start">
-              <span className="font-bold mr-2">1.</span>
+        {/* How It Works — same on every view (cancel page design) */}
+        <div className="mt-8 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold" aria-hidden>
+              i
+            </span>
+            How It Works
+          </h3>
+          <div className="space-y-2.5 text-sm text-gray-700">
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">1.</span>
               <p>Book a parking spot and wait for admin approval</p>
             </div>
-            <div className="flex items-start">
-              <span className="font-bold mr-2">2.</span>
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">2.</span>
               <p>When you arrive, the admin records your entry time</p>
             </div>
-            <div className="flex items-start">
-              <span className="font-bold mr-2">3.</span>
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">3.</span>
               <p>When you leave, the admin records your exit time</p>
             </div>
-            <div className="flex items-start">
-              <span className="font-bold mr-2">4.</span>
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">4.</span>
               <p>The system automatically calculates the fee based on actual time</p>
             </div>
-            <div className="flex items-start">
-              <span className="font-bold mr-2">5.</span>
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">5.</span>
               <p>If you have a saved payment method, you'll be charged automatically</p>
             </div>
-            <div className="flex items-start">
-              <span className="font-bold mr-2">6.</span>
+            <div className="flex items-start gap-2">
+              <span className="font-bold text-gray-900 shrink-0">6.</span>
               <p>You'll receive a confirmation email with payment details</p>
             </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-purple-200">
-            <p className="text-sm text-purple-700">
-              <strong>💡 Tip:</strong> Save a payment method in your account settings to enable automatic payments!
-            </p>
           </div>
         </div>
       </div>
