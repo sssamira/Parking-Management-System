@@ -218,284 +218,219 @@ const AdminBookings = () => {
     );
   }
 
+  const locationIcon = (
+    <svg className="w-4 h-4 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+  const calendarIcon = (
+    <svg className="w-4 h-4 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+  const carIcon = (
+    <svg className="w-4 h-4 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8m-8 4h8m-8 4h8M5 7v10a1 1 0 001 1h12a1 1 0 001-1V7" />
+    </svg>
+  );
+  const bikeIcon = carIcon;
+  const chatIcon = (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] text-gray-800">
-      <div className="max-w-7xl mx-auto px-4 lg:px-0 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Link
-            to="/"
-            className="text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            ← Back to Home
-          </Link>
-          <h1 className="text-3xl font-bold text-indigo-900">Pending Requests</h1>
-          <div className="w-24"></div> {/* Spacer for centering */}
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#f5f3ff] to-[#ede9fe] text-gray-800">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <Link
+          to="/"
+          className="inline-block text-purple-700 hover:text-purple-900 font-medium mb-8"
+        >
+          ← Back to Home
+        </Link>
+
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-10 bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+          Pending Requests
+        </h1>
 
         {bookings.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <div className="text-6xl mb-4">✅</div>
             <p className="text-xl text-gray-600">No pending requests</p>
             <p className="text-gray-500 mt-2">All requests have been processed.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-indigo-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Parking Lot Name/Spot
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Time/Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Vehicle Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Additional Info
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {bookings.map((booking, index) => {
-                    const isSearchQuery = booking.status === 'search_query';
-                    const userObj = typeof booking.user === 'object' ? booking.user : null;
-                    const userId = userObj?._id || booking.user || 'Unknown';
-                    
-                    // Debug log for first few bookings
-                    if (index < 3) {
-                      console.log(`Booking ${index + 1} details:`, {
-                        bookingId: booking._id,
-                        userId: userId,
-                        userObj: userObj,
-                        userName: userObj?.name,
-                        userEmail: userObj?.email,
-                        status: booking.status
-                      });
-                    }
-                    
-                    return (
-                      <tr key={`${booking._id}-${index}`} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {userObj?.name || 'N/A'}
+          <div className="space-y-6">
+            {bookings.map((booking, index) => {
+              const isSearchQuery = booking.status === 'search_query';
+              const userObj = typeof booking.user === 'object' ? booking.user : null;
+              const userId = userObj?._id || booking.user || 'Unknown';
+              const userName = userObj?.name || 'N/A';
+              const initial = (userName.charAt(0) || '?').toUpperCase();
+              const locationName = isSearchQuery
+                ? (booking.parkingLotName || booking.location || 'Not specified')
+                : (booking.parkingSpot?.parkingLotName || booking.parkingSpot?.parkinglotName || booking.parkingLotName || booking.location || 'Not assigned');
+              const spotInfo = booking.parkingSpot?.spotNum ? `Spot: ${booking.parkingSpot.spotNum}` : '';
+              const areaInfo = booking.parkingSpot?.location ? `Area: ${booking.parkingSpot.location}` : '';
+              const vehicleType = booking.vehicle?.carType || booking.vehicleType || 'Not specified';
+              const isBike = /bike|bike/i.test(vehicleType);
+              const hasTime = booking.startTime && booking.endTime;
+              const timeFrom = hasTime ? new Date(booking.startTime).toLocaleString() : null;
+              const timeTo = hasTime ? new Date(booking.endTime).toLocaleString() : null;
+              const license = booking.vehicle?.licensePlate || booking.licenseNumber || 'Not specified';
+              const model = booking.carModel || '';
+              const driver = booking.driverName || '';
+
+              return (
+                <div
+                  key={`${booking._id}-${index}`}
+                  className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="p-6 flex flex-col lg:flex-row lg:items-stretch gap-6">
+                    {/* User */}
+                    <div className="flex items-start gap-4 flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                        {initial}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate max-w-[140px]">{userName}</p>
+                        <p className="text-sm text-gray-500 truncate max-w-[160px]">{userObj?.email || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{userObj?.phone || 'N/A'}</p>
+                        <p className="text-xs text-gray-400 font-mono mt-1">{String(userId).substring(0, 8)}...</p>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex gap-3 flex-1 min-w-0">
+                      <div className="flex gap-2">
+                        {locationIcon}
+                        <div>
+                          <p className="font-medium text-gray-900">{locationName}</p>
+                          {(spotInfo || areaInfo) && (
+                            <p className="text-sm text-gray-600">{[spotInfo, areaInfo].filter(Boolean).join(', ')}</p>
+                          )}
+                          <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-600">
+                            {isBike ? bikeIcon : carIcon}
+                            <span>{vehicleType}</span>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {userObj?.email || 'N/A'}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {userObj?.phone || 'N/A'}
-                          </div>
-                          <div className="text-xs text-gray-300 mt-1 font-mono">
-                            User: {String(userId).substring(0, 8)}...
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {isSearchQuery ? (
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                Parking Lot Name: {booking.parkingLotName || booking.location || 'Not specified'}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                Vehicle Type: {booking.vehicleType || 'Not specified'}
-                              </div>
-                              {booking.parkingLotName || booking.location ? (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  Search request for this parking lot
-                                </div>
-                              ) : null}
-                            </div>
+                          {isSearchQuery && (
+                            <p className="text-xs text-gray-400 mt-1">Search request for this parking lot</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Time */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      {calendarIcon}
+                      <div className="text-sm text-gray-700">
+                        {hasTime ? (
+                          <>
+                            <p className="font-medium text-gray-500">FROM</p>
+                            <p>{timeFrom}</p>
+                            <p className="font-medium text-gray-500 mt-1">TO</p>
+                            <p>{timeTo}</p>
+                          </>
+                        ) : (
+                          <p className="text-gray-500">Not specified</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vehicle details */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      {isBike ? bikeIcon : carIcon}
+                      <div className="text-sm text-gray-700">
+                        <p><span className="text-gray-500">License</span> {license}</p>
+                        {model ? <p><span className="text-gray-500">Model</span> {model}</p> : null}
+                        {driver ? <p><span className="text-gray-500">Driver</span> {driver}</p> : null}
+                        {(!license || license === 'Not specified') && !model && !driver ? <p className="text-gray-500">Not specified</p> : null}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col items-end justify-center gap-2 flex-shrink-0">
+                      {(booking.status === 'pending' || booking.status === 'search_query') && (
+                        <span className="text-xs text-gray-500">
+                          {isSearchQuery ? 'Search Query' : 'Search Request'}
+                        </span>
+                      )}
+                      {(booking.status === 'approved' || booking.status === 'booked') && (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          Pending Booking
+                        </span>
+                      )}
+                      {userId && String(userId) !== 'Unknown' && (
+                        <Link
+                          to={`/admin/chat?userId=${encodeURIComponent(userId)}&name=${encodeURIComponent(userObj?.name || 'User')}&email=${encodeURIComponent(userObj?.email || '')}`}
+                          className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition shadow-sm"
+                        >
+                          {chatIcon}
+                          Chat
+                        </Link>
+                      )}
+                      {(booking.status === 'pending' || booking.status === 'search_query') && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprove(booking._id)}
+                            disabled={processing === booking._id}
+                            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {processing === booking._id ? 'Processing...' : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => handleReject(booking._id)}
+                            disabled={processing === booking._id}
+                            className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {processing === booking._id ? 'Processing...' : 'Reject'}
+                          </button>
+                        </div>
+                      )}
+                      {(booking.status === 'approved' || booking.status === 'booked') && (
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                          {!booking.actualEntryTime ? (
+                            <button
+                              onClick={() => handleRecordEntry(booking._id)}
+                              disabled={tracking === booking._id}
+                              className="border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 text-sm font-medium"
+                            >
+                              {tracking === booking._id ? 'Recording...' : 'Record Entry'}
+                            </button>
                           ) : (
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {booking.parkingSpot?.parkingLotName || 
-                                 booking.parkingSpot?.parkinglotName || 
-                                 booking.parkingLotName || 
-                                 booking.location || 
-                                 'Not assigned'}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Spot: {booking.parkingSpot?.spotNum || 'Not assigned'}
-                              </div>
-                              {booking.parkingSpot?.location && (
-                                <div className="text-xs text-gray-400">
-                                  Area: {booking.parkingSpot.location}
-                                </div>
+                            <span className="text-xs text-green-600 font-semibold">
+                              ✓ Entered: {new Date(booking.actualEntryTime).toLocaleTimeString()}
+                            </span>
+                          )}
+                          {booking.actualEntryTime && !booking.actualExitTime && (
+                            <button
+                              onClick={() => handleRecordExit(booking._id)}
+                              disabled={tracking === booking._id}
+                              className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
+                            >
+                              {tracking === booking._id ? 'Processing...' : 'Record Exit'}
+                            </button>
+                          )}
+                          {booking.actualExitTime && (
+                            <div className="text-xs text-gray-600 space-y-0.5">
+                              <p>Exited: {new Date(booking.actualExitTime).toLocaleTimeString()}</p>
+                              {booking.actualPrice > 0 && <p className="font-semibold text-purple-600">Fee: ৳{booking.actualPrice.toFixed(2)}</p>}
+                              {booking.paymentStatus && (
+                                <span className={`inline-block px-2 py-0.5 rounded ${booking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : booking.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                  {booking.paymentStatus === 'paid' ? '✓ Paid' : booking.paymentStatus === 'failed' ? '✗ Failed' : 'Pending'}
+                                </span>
                               )}
-                              {booking.parkingSpot?.floor && (
-                                <div className="text-xs text-gray-400">
-                                  Floor: {booking.parkingSpot.floor}
-                                </div>
-                              )}
                             </div>
                           )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {booking.startTime && booking.endTime ? (
-                            <div className="text-sm text-gray-900">
-                              <div>From: {new Date(booking.startTime).toLocaleString()}</div>
-                              <div>To: {new Date(booking.endTime).toLocaleString()}</div>
-                            </div>
-                          ) : booking.actualEntryTime && booking.actualExitTime ? (
-                            <div className="text-sm text-gray-900">
-                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
-                              <div>Exit: {new Date(booking.actualExitTime).toLocaleString()}</div>
-                            </div>
-                          ) : booking.actualEntryTime ? (
-                            <div className="text-sm text-gray-900">
-                              <div>Entry: {new Date(booking.actualEntryTime).toLocaleString()}</div>
-                              <div className="text-xs text-gray-400">Exit: Not recorded</div>
-                            </div>
-                          ) : booking.date ? (
-                            <div className="text-sm text-gray-900">
-                              Date: {new Date(booking.date).toLocaleDateString()}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-500">Not specified</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            Type: {booking.vehicle?.carType || booking.vehicleType || 'Not specified'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            License: {booking.vehicle?.licensePlate || booking.licenseNumber || 'Not specified'}
-                          </div>
-                          {booking.carModel && (
-                            <div className="text-xs text-gray-400">
-                              Model: {booking.carModel}
-                            </div>
-                          )}
-                          {booking.driverName && (
-                            <div className="text-xs text-gray-400">
-                              Driver: {booking.driverName}
-                            </div>
-                          )}
-                          {!booking.carModel && !booking.driverName && !booking.vehicle?.carType && !booking.vehicleType && (
-                            <div className="text-xs text-gray-400 italic">
-                              No additional vehicle details
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isSearchQuery ? (
-                            <div className="text-xs text-gray-500">
-                              Search Request
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                ৳{booking.price || 0}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            isSearchQuery 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {isSearchQuery ? 'Search Query' : 'Pending Booking'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex flex-col space-y-2">
-                            {/* Show Accept/Reject for pending bookings and search queries */}
-                            {(booking.status === 'pending' || booking.status === 'search_query') && (
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleApprove(booking._id)}
-                                  disabled={processing === booking._id}
-                                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                                >
-                                  {processing === booking._id ? 'Processing...' : 'Accept'}
-                                </button>
-                                <button
-                                  onClick={() => handleReject(booking._id)}
-                                  disabled={processing === booking._id}
-                                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                                >
-                                  {processing === booking._id ? 'Processing...' : 'Reject'}
-                                </button>
-                              </div>
-                            )}
-                            {/* Entry/Exit Tracking for approved/booked bookings */}
-                            {(booking.status === 'approved' || booking.status === 'booked') && (
-                              <div className="flex space-x-2">
-                                {!booking.actualEntryTime ? (
-                                  <button
-                                    onClick={() => handleRecordEntry(booking._id)}
-                                    disabled={tracking === booking._id}
-                                    className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {tracking === booking._id ? 'Recording...' : 'Record Entry'}
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-green-600 font-semibold">
-                                    ✓ Entered: {new Date(booking.actualEntryTime).toLocaleTimeString()}
-                                  </span>
-                                )}
-                                {booking.actualEntryTime && !booking.actualExitTime && (
-                                  <button
-                                    onClick={() => handleRecordExit(booking._id)}
-                                    disabled={tracking === booking._id}
-                                    className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {tracking === booking._id ? 'Processing...' : 'Record Exit'}
-                                  </button>
-                                )}
-                                {booking.actualExitTime && (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-xs text-gray-600">
-                                      Exited: {new Date(booking.actualExitTime).toLocaleTimeString()}
-                                    </span>
-                                    {booking.actualPrice > 0 && (
-                                      <span className="text-xs font-semibold text-indigo-600">
-                                        Fee: ৳{booking.actualPrice.toFixed(2)}
-                                      </span>
-                                    )}
-                                    {booking.paymentStatus && (
-                                      <span className={`text-xs px-2 py-0.5 rounded ${
-                                        booking.paymentStatus === 'paid' 
-                                          ? 'bg-green-100 text-green-800' 
-                                          : booking.paymentStatus === 'failed'
-                                          ? 'bg-red-100 text-red-800'
-                                          : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {booking.paymentStatus === 'paid' ? '✓ Paid' : 
-                                         booking.paymentStatus === 'failed' ? '✗ Failed' : 
-                                         'Pending'}
-                                      </span>
-                                    )}
-                                    {booking.paymentError && (
-                                      <span className="text-xs text-red-600">
-                                        {booking.paymentError}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

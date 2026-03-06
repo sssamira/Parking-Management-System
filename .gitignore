@@ -41,3 +41,6 @@ server/.env
 
 # Client
 client/build/
+
+.env
+server/.env

@@ -15,6 +15,7 @@ const BookSpot = () => {
 
   // Search filters
   const [filters, setFilters] = useState({
+    phoneNumber: '',
     parkingLotName: '',
     vehicleType: '',
     date: '',
@@ -411,25 +412,55 @@ const BookSpot = () => {
   const startCheckoutFromForm = async () => {
     try {
       if (!filters.parkingLotName || !filters.startTime || !filters.endTime) {
-        setError('Select parking lot and both times to pay now');
+        const msg = 'Please select a parking lot and both start/end times to proceed with payment.';
+        setError(msg);
+        alert(msg);
         return;
       }
       const start = new Date(filters.startTime);
       const end = new Date(filters.endTime);
       if (end <= start) {
-        setError('End time must be after start time');
+        const msg = 'End time must be after start time';
+        setError(msg);
+        alert(msg);
         return;
       }
       const hours = Math.ceil((end.getTime() - start.getTime()) / 3600000);
-      const pricePerHour = typeof locationPrice?.price === 'number' ? locationPrice.price : 0;
+      let pricePerHour = 0;
+      
+      if (locationPrice && !locationPrice.loading && !locationPrice.error && !locationPrice.noPrice) {
+         pricePerHour = typeof locationPrice.price === 'number' ? locationPrice.price : 0;
+      } else {
+         const msg = 'Please wait for the price to load or select a valid parking lot.';
+         setError(msg);
+         alert(msg);
+         return;
+      }
+
       const amount = Math.max(0, pricePerHour * hours);
+      
+      if (amount <= 0) {
+        const msg = 'Calculated amount is 0. Cannot proceed with payment.';
+        setError(msg);
+        alert(msg);
+        return;
+      }
+
       const description = `Booking at ${filters.parkingLotName}`;
+      
+      // Show loading indicator or something? For now just proceed.
       const resp = await api.post('/payment/create-checkout-session', { amount, currency: 'bdt', description });
-      if (resp.data?.url) {
+      
+      if (resp.data && resp.data.url) {
         window.location.href = resp.data.url;
+      } else {
+        alert('Payment initiation failed: No redirect URL received from server.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to start payment');
+      console.error('Payment Error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to start payment';
+      setError(errorMsg);
+      alert('Error: ' + errorMsg);
     }
   };
 
@@ -552,20 +583,62 @@ const BookSpot = () => {
   const startCheckout = async () => {
     try {
       if (!selectedSpot) return;
-      if (!bookingData.startTime || !bookingData.endTime) return;
+      if (!bookingData.startTime || !bookingData.endTime) {
+         alert('Please ensure start and end times are selected.');
+         return;
+      }
       const start = new Date(bookingData.startTime);
       const end = new Date(bookingData.endTime);
-      if (end <= start) return;
+      if (end <= start) {
+         alert('End time must be after start time');
+         return;
+      }
       const hours = Math.ceil((end.getTime() - start.getTime()) / 3600000);
       const pricePerHour = selectedSpot.computedPricePerHour ?? selectedSpot.pricePerHour ?? 0;
       const amount = Math.max(0, pricePerHour * hours);
-      const description = `Booking at ${selectedSpot.parkingLotName} - Spot ${selectedSpot.spotNum}`;
-      const resp = await api.post('/payment/create-checkout-session', { amount, currency: 'bdt', description });
-      if (resp.data?.url) {
-        window.location.href = resp.data.url;
+      if (amount <= 0) {
+        alert('Amount is 0. Cannot proceed.');
+        return;
       }
+
+      // Create a pending booking first
+      let bookingId = null;
+      try {
+        const bookingRes = await api.post('/bookings', {
+          parkingSpotId: selectedSpot._id,
+          startTime: new Date(bookingData.startTime).toISOString(),
+          endTime: new Date(bookingData.endTime).toISOString(),
+          vehicle: bookingData.vehicle,
+          // You might need to adjust backend to allow 'pending_payment' status or similar
+          // For now, let's assume standard booking creation works
+        });
+        if (bookingRes.data && bookingRes.data.booking) {
+            bookingId = bookingRes.data.booking._id;
+        }
+      } catch (bookingErr) {
+         console.error("Booking creation failed:", bookingErr);
+         alert("Failed to reserve spot. Please try again.");
+         return;
+      }
+      const description = `Booking at ${selectedSpot.parkingLotName} - Spot ${selectedSpot.spotNum}`;
+      const resp = await api.post('/payment/create-checkout-session', { 
+        amount, 
+        currency: 'bdt', 
+        description,
+        bookingId: bookingId // Pass the created booking ID
+      });
+      
+      if (resp.data && resp.data.url) {
+        window.location.href = resp.data.url;
+      } else {
+        alert('Payment initiation failed: No redirect URL received.');
+      }
+        
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to start payment');
+      console.error('Payment Error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to start payment';
+      setError(errorMsg);
+      alert('Error: ' + errorMsg);
     }
   };
   return (
@@ -700,8 +773,12 @@ const BookSpot = () => {
                   >
                     <option value="">All Types</option>
                     <option value="Car">Car</option>
+                    <option value="Bus">Bus</option>
                     <option value="Bike">Bike</option>
-                    <option value="All">All</option>
+                    <option value="Vaan">Vaan</option>
+                    <option value="Ambulance">Ambulance</option>
+                    <option value="Fire Ambulance">Fire Ambulance</option>
+                    <option value="Security Force Vehicles">Security Force Vehicles</option>
                   </select>
                 </div>
 
@@ -957,15 +1034,13 @@ const BookSpot = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Type</option>
-                      <option value="Sedan">Sedan</option>
-                      <option value="SUV">SUV</option>
-                      <option value="Hatchback">Hatchback</option>
-                      <option value="Coupe">Coupe</option>
-                      <option value="Convertible">Convertible</option>
-                      <option value="Truck">Truck</option>
-                      <option value="Van">Van</option>
-                      <option value="Motorcycle">Motorcycle</option>
-                      <option value="Other">Other</option>
+                      <option value="Car">Car</option>
+                      <option value="Bus">Bus</option>
+                      <option value="Bike">Bike</option>
+                      <option value="Vaan">Vaan</option>
+                      <option value="Ambulance">Ambulance</option>
+                      <option value="Fire Ambulance">Fire Ambulance</option>
+                      <option value="Security Force Vehicles">Security Force Vehicles</option>
                     </select>
                   </div>
 

@@ -52,4 +52,13 @@ export const admin = (req, res, next) => {
   }
 };
 
+// Parking owner only middleware (supports both role names during migration)
+export const parkingOwner = (req, res, next) => {
+  const role = req.user?.role;
+  if (role === 'owner' || role === 'parkingowner') {
+    return next();
+  }
+  return res.status(403).json({ message: 'Access denied. Parking owner only.' });
+};
+
 

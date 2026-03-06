@@ -6,6 +6,7 @@ const Chat = () => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const ensureAuth = () => {
     const token = localStorage.getItem('token');
@@ -37,7 +38,10 @@ const Chat = () => {
   }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   const sendMessage = async () => {
@@ -69,7 +73,7 @@ const Chat = () => {
             <div className="font-semibold text-indigo-800">Chat with Admin</div>
             <div className="text-sm text-gray-500">{userObj?.email || ''}</div>
           </div>
-          <div className="h-[60vh] overflow-y-auto border rounded p-3 bg-indigo-50">
+          <div ref={messagesContainerRef} className="h-[60vh] overflow-y-auto border rounded p-3 bg-indigo-50">
             {messages.map(m => (
               <div key={m._id + m.createdAt} className={`mb-2 flex ${m.senderRole === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] px-3 py-2 rounded ${m.senderRole === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border'}`}>

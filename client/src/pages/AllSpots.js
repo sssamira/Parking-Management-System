@@ -550,7 +550,12 @@ const AllSpots = () => {
                                     >
                                         <option value="">All Types</option>
                                         <option value="Car">Car</option>
+                                        <option value="Bus">Bus</option>
                                         <option value="Bike">Bike</option>
+                                        <option value="Vaan">Vaan</option>
+                                        <option value="Ambulance">Ambulance</option>
+                                        <option value="Fire Ambulance">Fire Ambulance</option>
+                                        <option value="Security Force Vehicles">Security Force Vehicles</option>
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -722,7 +727,7 @@ const AllSpots = () => {
                                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             >
                                                 <option value="">Select Type</option>
-                                                {['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'].map(t => <option key={t} value={t}>{t}</option>)}
+                                                {['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles'].map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                         <div className="md:col-span-2 flex flex-col sm:flex-row gap-3 justify-end pt-2">

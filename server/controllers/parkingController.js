@@ -423,7 +423,7 @@ export const createParkingSpot = async (req, res) => {
           floor: spotData.floor,
           location: String(spotData.location || '').trim(),
           area: String(spotData.area || '').trim(),
-          vehicleType: spotData.vehicleType || 'All',
+          vehicleType: spotData.vehicleType || 'Car',
           pricePerHour: spotData.pricePerHour !== undefined ? spotData.pricePerHour : 50,
           ...(Array.isArray(spotData.tags) && { tags: spotData.tags })
         };
@@ -549,7 +549,7 @@ export const createParkingSpot = async (req, res) => {
                   floor: spotData.floor,
                   location: String(spotData.location || '').trim(),
                   area: String(spotData.area || '').trim(),
-                  vehicleType: spotData.vehicleType || 'All',
+                  vehicleType: spotData.vehicleType || 'Car',
                   pricePerHour: spotData.pricePerHour !== undefined ? spotData.pricePerHour : 50,
                   ...(Array.isArray(spotData.tags) && { tags: spotData.tags })
                 };
@@ -721,7 +721,7 @@ export const createParkingSpot = async (req, res) => {
               floor: spotData.floor,
               location: String(spotData.location || '').trim(),
               area: String(spotData.area || '').trim(),
-              vehicleType: spotData.vehicleType || 'All',
+              vehicleType: spotData.vehicleType || 'Car',
               pricePerHour: spotData.pricePerHour !== undefined ? spotData.pricePerHour : 50,
               ...(Array.isArray(spotData.tags) && { tags: spotData.tags })
             };
@@ -843,7 +843,7 @@ export const createParkingSpot = async (req, res) => {
             floor: spotData.floor,
             location: String(spotData.location || '').trim(),
             area: String(spotData.area || '').trim(),
-            vehicleType: spotData.vehicleType || 'All',
+            vehicleType: spotData.vehicleType || 'Car',
             pricePerHour: spotData.pricePerHour !== undefined ? spotData.pricePerHour : 50,
             ...(Array.isArray(spotData.tags) && { tags: spotData.tags })
           };

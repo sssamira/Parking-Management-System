@@ -9,7 +9,7 @@ const AdminSpots = () => {
     area: '',
     floor: '',
     parkingLotName: '',
-    vehicleType: 'All',
+    vehicleType: 'Car',
     pricePerHour: '',
     tags: '',
     numberOfSpots: '1'
@@ -102,7 +102,7 @@ const AdminSpots = () => {
         area: '',
         floor: '',
         parkingLotName: '',
-        vehicleType: 'All',
+        vehicleType: 'Car',
         pricePerHour: '',
         tags: '',
         numberOfSpots: '1'
@@ -241,13 +241,20 @@ const AdminSpots = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Parking Lot Name *
                 </label>
-                <select
+                <input
+                  type="text"
                   name="parkingLotName"
                   value={formData.parkingLotName}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
+                  placeholder="Enter parking lot name"
+                />
+
+                {/*
+                Hardcoded parking lot options removed by request.
+                Old static option list (lines ~250-296) intentionally commented out.
+                <select ...>
                   <option value="">Select Parking Lot Name</option>
                   <optgroup label="Shopping Malls">
                     <option value="Bashundhara City">Bashundhara City</option>
@@ -292,6 +299,7 @@ const AdminSpots = () => {
                     <option value="Gulshan Lake Park">Gulshan Lake Park</option>
                   </optgroup>
                 </select>
+                */}
               </div>
             </div>
 
@@ -307,9 +315,13 @@ const AdminSpots = () => {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  <option value="All">All</option>
                   <option value="Car">Car</option>
+                  <option value="Bus">Bus</option>
                   <option value="Bike">Bike</option>
+                  <option value="Vaan">Vaan</option>
+                  <option value="Ambulance">Ambulance</option>
+                  <option value="Fire Ambulance">Fire Ambulance</option>
+                  <option value="Security Force Vehicles">Security Force Vehicles</option>
                 </select>
               </div>
 

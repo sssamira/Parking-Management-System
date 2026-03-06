@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema(
           carType: {
             type: String,
             required: [true, 'Please provide your car type'],
-            enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'],
+            enum: ['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck'],
             trim: true,
           },
           carModel: {
@@ -117,7 +117,7 @@ const userSchema = new mongoose.Schema(
       },
       vehicleType: {
         type: String,
-        enum: ['Car', 'Bike', 'All', ''],
+        enum: ['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles', ''],
         default: ''
       },
       date: {
@@ -154,7 +154,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ['user', 'admin', 'parkingowner'],
       default: 'user',
     },
     // Payment Method Storage
@@ -187,7 +187,15 @@ const userSchema = new mongoose.Schema(
     hasPaymentMethod: {
       type: Boolean,
       default: false
-    }
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,

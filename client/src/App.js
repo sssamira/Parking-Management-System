@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Homepage from './pages/Homepage';
 import Vehicles from './pages/Vehicles';
 import Feedback from './pages/Feedback';
@@ -21,6 +23,21 @@ import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
 import AdminReports from './pages/AdminReports';
+import ContactUs from './pages/ContactUs';
+import RefundPolicy from './pages/ReturnRefundPolicy';
+import Faq from './pages/Faq';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import AboutUs from './pages/AboutUs';
+import TermsConditions from './pages/TermsConditions';
+import Footer from './components/Footer';
+import ParkSmarterLogo from './components/ParkSmarterLogo';
+import ScrollToTop from './components/ScrollToTop';
+import OwnerLogin from './pages/OwnerLogin';
+import OwnerRegister from './pages/OwnerRegister';
+import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerSpotRequests from './pages/OwnerSpotRequests';
+import AdminSpotRequests from './pages/AdminSpotRequests';
+import OwnerApprovalStatus from './pages/OwnerApprovalStatus';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -30,6 +47,16 @@ function App() {
       return null;
     }
   });
+
+  const parsedUser = (() => {
+    try {
+      return user ? JSON.parse(user) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  const isOwner = parsedUser && (parsedUser.role === 'owner' || parsedUser.role === 'parkingowner');
 
   // Update user state when localStorage changes
   useEffect(() => {
@@ -59,16 +86,16 @@ function App() {
 
   return (
     <Router>
-      <div className="relative min-h-screen">
-
-        {/* Content Container */}
-        <div className="relative z-10">
+      <ScrollToTop />
+      <div className="relative min-h-screen flex flex-col">
+        {/* Content Container - grows to push footer to bottom */}
+        <div className="relative z-10 flex-1 flex flex-col">
           <Routes>
             <Route
               path="/"
               element={
                 user ? (
-                  <Homepage />
+                  isOwner ? <OwnerDashboard /> : <Homepage />
                 ) : (
                   <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
                     {/* Grid Pattern Overlay */}
@@ -96,13 +123,16 @@ function App() {
                       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Left Side Content */}
                         <div className="space-y-8">
-                          {/* Main Title */}
-                          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                            <span className="text-white">Park </span>
-                            <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-                              Smarter
-                            </span>
-                          </h1>
+                          {/* Main Title with Logo */}
+                          <div className="flex items-center gap-4">
+                            <ParkSmarterLogo size={72} className="flex-shrink-0" />
+                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+                              <span className="text-white">Park </span>
+                              <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+                                Smarter
+                              </span>
+                            </h1>
+                          </div>
                           
                           {/* Descriptive Text */}
                           <p className="text-xl md:text-2xl text-white leading-relaxed">
@@ -129,11 +159,9 @@ function App() {
                         {/* Right Side - Get Started Panel */}
                         <div className="flex justify-center lg:justify-end">
                           <div className="w-full max-w-md bg-gray-800 bg-opacity-60 backdrop-blur-sm rounded-2xl p-8 border border-purple-500 border-opacity-30 shadow-2xl">
-                            {/* Car Icon */}
+                            {/* Logo at top */}
                             <div className="flex justify-center mb-6">
-                              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center">
-                                <span className="text-white text-4xl">🚗</span>
-                              </div>
+                              <ParkSmarterLogo size={80} className="flex-shrink-0" />
                             </div>
                             
                             {/* Heading */}
@@ -165,6 +193,13 @@ function App() {
                               className="block w-full py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg text-center transition-all shadow-lg hover:shadow-xl"
                             >
                               Registration
+                            </Link>
+
+                            <Link
+                              to="/owner/login"
+                              className="block w-full mt-4 py-3 border border-indigo-300 text-indigo-100 hover:bg-indigo-500/20 rounded-lg font-semibold text-base text-center transition-all"
+                            >
+                              Sign in as Parking Owner
                             </Link>
                             
                             {/* Security Message */}
@@ -234,8 +269,15 @@ function App() {
             <Route path="/live-map" element={<LiveMap />} />
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/*" element={<AdminReports />} />
+            <Route path="/contact-us" element={<ContactUs />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/faq" element={<Faq />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/about-us" element={<AboutUs />} />
+            <Route path="/terms-and-conditions" element={<TermsConditions />} />
           </Routes>
         </div>
+        <Footer />
       </div>
     </Router>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const OFFER_CARD_THEMES = [
   { bg: 'bg-indigo-50', border: 'border-indigo-100' },
@@ -14,6 +15,7 @@ const Homepage = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const notificationRef = useRef(null);
 
   const [activeOffers, setActiveOffers] = useState([]);
@@ -49,6 +51,30 @@ const Homepage = () => {
     fetchNotifications();
     // Refresh notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch chat unread count for badge on chat icon (user: from admin; admin: from users)
+  useEffect(() => {
+    const u = (() => {
+      try {
+        const s = localStorage.getItem('user');
+        return s ? JSON.parse(s) : {};
+      } catch {
+        return {};
+      }
+    })();
+    if (!u?.role) return;
+    const fetchChatUnread = async () => {
+      try {
+        const res = await api.get('/chat/unread-count');
+        setChatUnreadCount(res.data?.unreadCount ?? 0);
+      } catch {
+        setChatUnreadCount(0);
+      }
+    };
+    fetchChatUnread();
+    const interval = setInterval(fetchChatUnread, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -128,6 +154,23 @@ const Homepage = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+
+      const u = (() => {
+        try {
+          const s = localStorage.getItem('user');
+          return s ? JSON.parse(s) : {};
+        } catch {
+          return {};
+        }
+      })();
+
+      if (u?.role === 'admin') {
+        const res = await api.get('/admin/notifications');
+        const list = res.data?.notifications || [];
+        setNotifications(list);
+        setUnreadCount(list.filter(n => !n.read).length);
+        return;
+      }
 
       // Fetch user bookings for booking-related notifications
       const bookingsResponse = await api.get('/bookings');
@@ -249,18 +292,48 @@ const Homepage = () => {
     window.location.reload();
   };
 
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+  const markAsRead = async (notificationId) => {
+    setNotifications(prev =>
+      prev.map(notif =>
         notif.id === notificationId ? { ...notif, read: true } : notif
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
+    const u = (() => {
+      try {
+        const s = localStorage.getItem('user');
+        return s ? JSON.parse(s) : {};
+      } catch {
+        return {};
+      }
+    })();
+    if (u?.role === 'admin') {
+      try {
+        await api.patch(`/admin/notifications/${notificationId}/read`);
+      } catch (e) {
+        console.error('Mark notification read:', e);
+      }
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
     setUnreadCount(0);
+    const u = (() => {
+      try {
+        const s = localStorage.getItem('user');
+        return s ? JSON.parse(s) : {};
+      } catch {
+        return {};
+      }
+    })();
+    if (u?.role === 'admin') {
+      try {
+        await api.patch('/admin/notifications/read-all');
+      } catch (e) {
+        console.error('Mark all read:', e);
+      }
+    }
   };
 
   const toggleNotifications = () => {
@@ -272,11 +345,9 @@ const Homepage = () => {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-6 lg:px-10 py-5 bg-white/70 backdrop-blur-md border-b border-indigo-100 shadow-sm">
         <div className="flex items-center space-x-3">
-          <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-300/60">
-            <span className="text-white text-2xl">🚗</span>
-          </div>
+          <ParkSmarterLogo size={48} className="flex-shrink-0 shadow-lg" />
           <div>
-            <p className="text-sm text-indigo-500 font-semibold">Parking Management System</p>
+            <p className="text-sm text-indigo-500 font-semibold">Park Smarter</p>
             <p className="text-xs text-gray-500">Your centralized operations hub</p>
           </div>
         </div>
@@ -366,6 +437,11 @@ const Homepage = () => {
                                 Pending
                               </span>
                             )}
+                            {notification.type === 'booking_cancelled' && (
+                              <span className="flex-shrink-0 text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                                Cancelled
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -375,6 +451,42 @@ const Homepage = () => {
               </div>
             )}
           </div>
+
+          {/* Message / Chat icon - outline bubble + gradient notification badge (green to purple) */}
+          {user && user.role !== 'admin' && (
+            <Link
+              to="/chat"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
+              title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
+              aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/chat"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
+              title={chatUnreadCount > 0 ? 'New messages from users' : 'Chat with users'}
+              aria-label={chatUnreadCount > 0 ? 'Chat with users (new messages)' : 'Open admin chat'}
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* Logout Button */}
           <button
@@ -389,9 +501,12 @@ const Homepage = () => {
 
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-4 lg:px-0 mt-10 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-indigo-800">
-          Welcome to Parking Management{user.name ? `, ${user.name}` : ''}
-        </h1>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <ParkSmarterLogo size={48} className="flex-shrink-0" />
+          <h1 className="text-3xl md:text-4xl font-bold text-indigo-800">
+            Welcome to Park Smarter{user.name ? `, ${user.name}` : ''}
+          </h1>
+        </div>
         <p className="mt-3 text-gray-600 text-lg">
           Efficiently manage your parking operations with our comprehensive system. Choose an option below to get started.
         </p>
@@ -401,7 +516,7 @@ const Homepage = () => {
       <div className="max-w-6xl mx-auto px-4 lg:px-0 mt-12 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* User Only - Hide these boxes for admins */}
-          {user && user.role !== 'admin' && (
+          {user && (!user.role || user.role === 'user') && (
             <>
               <Link
                   to="/book-spot"
@@ -567,6 +682,19 @@ const Homepage = () => {
                   View all your parking bookings, entry/exit times, payment status, and transaction history.
                 </p>
               </Link>
+
+              <Link
+                to="/my-bookings?view=cancel"
+                className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(239,68,68,0.35)] p-8 border border-red-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(239,68,68,0.45)] transition"
+              >
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-red-100 text-red-600 text-3xl mb-4">
+                  ✕
+                </div>
+                <h3 className="text-xl font-semibold text-indigo-900 mb-2">Cancel your booking</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  View and cancel bookings that are not yet completed. After cancelling, you can apply for a refund here.
+                </p>
+              </Link>
               
             </>
           )}
@@ -586,6 +714,21 @@ const Homepage = () => {
               <h3 className="text-xl font-semibold text-indigo-900 mb-2">Add Spot to Parking Places</h3>
               <p className="text-gray-600 leading-relaxed">
                 Admin: Add new parking spots to the system. Manage parking availability and locations.
+              </p>
+            </Link>
+          )}
+
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/spot-requests"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(59,130,246,0.35)] p-8 border border-blue-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(59,130,246,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 text-3xl mb-4">
+                📝
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Approve Parking Spots</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Review parking owner requests and approve to create the parking lot and requested spots.
               </p>
             </Link>
           )}

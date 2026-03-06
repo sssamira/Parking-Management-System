@@ -12,7 +12,7 @@ router.get('/', getAvailableSpots);
 
 const createSpotValidation = [
 	body('floor').isInt().withMessage('floor must be an integer'),
-	body('vehicleType').optional().isIn(['Car', 'Bike', 'All']).withMessage('vehicleType must be Car, Bike, or All'),
+	body('vehicleType').optional().isIn(['Car', 'Bus', 'Bike', 'Vaan', 'Ambulance', 'Fire Ambulance', 'Security Force Vehicles']).withMessage('vehicleType must be one of the allowed types'),
 	body('pricePerHour').optional().isFloat({ min: 0 }).withMessage('pricePerHour must be a non-negative number'),
 	body('tags').optional().isArray().withMessage('tags must be an array of strings'),
 	body('numberOfSpots').optional().isInt({ min: 1, max: 100 }).withMessage('numberOfSpots must be between 1 and 100'),

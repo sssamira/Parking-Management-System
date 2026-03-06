@@ -78,6 +78,29 @@ export const getThreads = async (req, res) => {
     return res.status(500).json({ message: 'Server error fetching threads' });
   }
 };
+/** For user: count unread messages from admin. For admin: count unread messages from users. Used to show badge on chat icon. */
+export const getUnreadCount = async (req, res) => {
+  try {
+    if (req.user?.role === 'admin') {
+      const count = await ChatMessage.countDocuments({
+        senderRole: 'user',
+        readByAdmin: false
+      });
+      return res.json({ unreadCount: count });
+    }
+    const userId = req.user?._id;
+    if (!userId) return res.status(400).json({ message: 'User id is required' });
+    const count = await ChatMessage.countDocuments({
+      user: userId,
+      senderRole: 'admin',
+      readByUser: false
+    });
+    return res.json({ unreadCount: count });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error fetching unread count' });
+  }
+};
+
 export const markRead = async (req, res) => {
   try {
     const isAdmin = req.user?.role === 'admin';

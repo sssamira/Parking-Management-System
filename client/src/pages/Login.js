@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
+import ParkSmarterLogo from '../components/ParkSmarterLogo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -179,10 +180,10 @@ const Login = () => {
           {/* Main Content - Right below badge */}
           <div className="space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold leading-tight">
-              <span className="text-white">Welcome to the </span>
-              <span className="text-yellow-300">Future</span>
+              <span className="text-white">Welcome to  </span>
+              <span className="text-yellow-300">Park</span>
               <br />
-              <span className="text-yellow-300">Parking</span>
+              <span className="text-yellow-300">Smarter</span>
             </h1>
             
             <p className="text-xl text-white leading-relaxed max-w-md">
@@ -205,15 +206,25 @@ const Login = () => {
             </svg>
           </Link>
           
-          {/* Title */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Sign in
-          </h2>
+          {/* Logo + Title */}
+          <div className="flex items-center gap-3 mb-2">
+            <ParkSmarterLogo size={44} className="flex-shrink-0" />
+            <h2 className="text-3xl font-bold text-gray-900">
+              Sign in
+            </h2>
+          </div>
           
           {/* Subtitle */}
           <p className="text-gray-600 mb-8">
             Enter your credentials to access your account.
           </p>
+
+          <Link
+            to="/owner/login"
+            className="block w-full mb-6 text-center py-2.5 border border-indigo-300 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-50 transition-colors"
+          >
+            Sign in as Parking Owner
+          </Link>
           
           {/* Success/Error Messages */}
           {success && (
@@ -359,7 +370,7 @@ const Login = () => {
                 </label>
               </div>
               <div className="text-sm">
-                <Link to="#" className="font-medium text-blue-600 hover:text-blue-500">
+                <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
                   Forgot password?
                 </Link>
               </div>

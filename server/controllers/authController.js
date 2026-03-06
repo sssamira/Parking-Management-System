@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { getOrCreateStripeCustomer, attachPaymentMethod } from '../utils/payment.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -24,6 +26,19 @@ const ensureGoogleClient = () => {
     googleClient = getGoogleClient();
   }
   return googleClient;
+};
+
+const isOwnerRole = (role) => role === 'owner' || role === 'parkingowner';
+
+const getOwnerRoleValue = () => {
+  const roleEnumValues = User.schema.path('role')?.enumValues || [];
+  if (roleEnumValues.includes('owner')) {
+    return 'owner';
+  }
+  if (roleEnumValues.includes('parkingowner')) {
+    return 'parkingowner';
+  }
+  return 'owner';
 };
 
 // @desc    Register a new user
@@ -330,6 +345,226 @@ export const login = async (req, res) => {
   }
 };
 
+// @desc    Forgot password - send reset link to email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail, authProvider: 'local' })
+      .select('+password +resetPasswordToken +resetPasswordExpires');
+    if (!user) {
+      return res.json({ message: 'If an account exists with this email, you will receive a password reset link.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: 'Password Reset - Parking Management',
+      html: `
+        <p>Hello ${user.name || 'User'},</p>
+        <p>You requested a password reset. Click the link below to set a new password (valid for 1 hour):</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
+      text: `Password reset link (valid for 1 hour): ${resetUrl}`,
+    });
+
+    if (!emailResult.success && process.env.NODE_ENV === 'development') {
+      console.log('[forgot-password] SMTP not configured. Reset link:', resetUrl);
+    }
+
+    res.json({ message: 'If an account exists with this email, you will receive a password reset link.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// @desc    Reset password with token
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password || password.trim().length < 6) {
+      return res.status(400).json({
+        message: 'Token and a new password (at least 6 characters) are required.',
+      });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    }).select('+password +resetPasswordToken +resetPasswordExpires');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset link. Please request a new password reset.' });
+    }
+
+    user.password = password.trim();
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password has been reset. You can now sign in with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// @desc    Register a new parking owner
+// @route   POST /api/auth/register-owner
+// @access  Public
+export const registerOwner = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      phone,
+      driverLicense,
+      address,
+    } = req.body;
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const userExists = await User.findOne({ email: normalizedEmail });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    const user = await User.create({
+      name: name?.trim(),
+      email: normalizedEmail,
+      password: password.trim(),
+      phone: phone?.trim(),
+      driverLicense: driverLicense?.trim(),
+      address: address?.trim(),
+      vehicles: [],
+      role: getOwnerRoleValue(),
+    });
+
+    return res.status(201).json({
+      token: generateToken(user._id),
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        driverLicense: user.driverLicense,
+        address: user.address,
+        vehicles: user.vehicles,
+        role: user.role,
+        authProvider: user.authProvider,
+        profileImage: user.profileImage,
+      },
+      message: 'Parking owner account created successfully',
+    });
+  } catch (error) {
+    console.error('Owner registration error:', error);
+
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    return res.status(500).json({
+      message: 'Server error during owner registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Login parking owner
+// @route   POST /api/auth/owner/login
+// @access  Public
+export const ownerLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || email.trim() === '') {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    if (!password || password.trim() === '') {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedPassword = password.trim();
+
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (!isOwnerRole(user.role)) {
+      return res.status(403).json({ message: 'This account is not registered as a parking owner' });
+    }
+
+    if (!user.password) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const isPasswordHashed = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
+
+    let isPasswordMatch = false;
+    if (isPasswordHashed) {
+      isPasswordMatch = await user.matchPassword(normalizedPassword);
+      if (!isPasswordMatch) {
+        isPasswordMatch = await bcrypt.compare(normalizedPassword, user.password);
+      }
+    } else {
+      isPasswordMatch = normalizedPassword === user.password.trim();
+    }
+
+    if (!isPasswordMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    return res.json({
+      token: generateToken(user._id),
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        driverLicense: user.driverLicense,
+        address: user.address,
+        vehicles: user.vehicles,
+        role: user.role,
+        authProvider: user.authProvider,
+        profileImage: user.profileImage,
+      },
+      message: 'Parking owner login successful',
+    });
+  } catch (error) {
+    console.error('Owner login error:', error);
+    return res.status(500).json({
+      message: 'Server error during owner login',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
 // @desc    Get current user profile
 // @route   GET /api/auth/me
 // @access  Private
@@ -457,7 +692,7 @@ export const savePaymentMethod = async (req, res) => {
       if (error.code === 'resource_missing') {
         errorMessage = 'Payment method not found. Please make sure your Stripe keys are configured correctly and try entering your card details again.';
       } else {
-        errorMessage = 'Invalid payment method. Please check your card details.';
+      errorMessage = 'Invalid payment method. Please check your card details.';
       }
     } else if (error.type === 'StripeCardError') {
       errorMessage = 'Card error: ' + (error.message || 'Please check your card details.');
