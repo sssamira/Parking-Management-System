@@ -250,6 +250,14 @@ function App() {
             />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/owner/login" element={<OwnerLogin />} />
+            <Route path="/owner/register" element={<OwnerRegister />} />
+            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+            <Route path="/owner/spot-requests" element={<OwnerSpotRequests />} />
+            <Route path="/owner/approval-status" element={<OwnerApprovalStatus />} />
+            <Route path="/admin/spot-requests" element={<AdminSpotRequests />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/book-spot" element={<BookSpot />} />
             <Route path="/all-spots" element={<AllSpots />} />
