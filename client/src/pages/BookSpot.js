@@ -750,11 +750,11 @@ const BookSpot = () => {
                           ℹ️ Price information not available for <span className="font-semibold">{locationPrice.location}</span> parking.
                         </p>
                       ) : (
-                        <p className="text-sm text-blue-800 font-medium">
-                          💰 Hourly payment is ৳{locationPrice.price || locationPrice.average || 'N/A'} for <span className="font-semibold">{locationPrice.location}</span> parking
+                         <p className="text-sm text-blue-800 font-medium">
+                      💰 Hourly payment is ৳{locationPrice.price || locationPrice.average || 'N/A'} for <span className="font-semibold">{locationPrice.location}</span> parking} 
                           {locationPrice.surgeApplied && (
                             <span className="ml-2 inline-block px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded">Rush +{locationPrice.surgePercent ?? ''}%</span>
-                          )}
+                          )} 
                         </p>
                       )}
                     </div>

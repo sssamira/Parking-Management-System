@@ -244,7 +244,7 @@ const MyBookings = () => {
               .my-bookings-grid .col-cell { min-width: 0; overflow: hidden; }
               @media (min-width: 768px) {
                 .my-bookings-grid {
-                  grid-template-columns: minmax(0,1.2fr) minmax(172px,1.45fr) minmax(108px,0.95fr) minmax(68px,0.5fr) minmax(82px,0.65fr) minmax(98px,0.8fr) minmax(98px,0.8fr) minmax(120px,auto);
+                   grid-template-columns: minmax(0,1.2fr) minmax(172px,1.45fr) minmax(108px,0.95fr) minmax(68px,0.5fr) minmax(82px,0.65fr) minmax(98px,0.8fr) minmax(98px,0.8fr) minmax(120px,auto);
                 }
               }
             `}</style>
@@ -258,7 +258,7 @@ const MyBookings = () => {
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Amount</div>
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Status</div>
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Payment</div>
-              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell text-center">Action</div>
+              
             </div>
 
             <div className="space-y-3 pt-1">
@@ -387,7 +387,7 @@ const MyBookings = () => {
                       {!isCompleted && !isCancelled && <span className="text-xs text-gray-400">—</span>}
                     </div>
 
-                    {/* 7. Payment — only Paid badge + time or empty, centered in column */}
+                    {/* 7. Payment — Paid badge / manually paid / empty, centered in column */}
                     <div className="col-cell flex flex-col items-center overflow-hidden">
                       {booking.paymentStatus === 'paid' ? (
                         <>
@@ -400,37 +400,42 @@ const MyBookings = () => {
                           {booking.chargedAt && <p className="text-xs text-gray-500 mt-0.5">Paid: {formatTime(booking.chargedAt)}</p>}
                         </>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        isCompleted ? (
+                          <span className="text-xs font-medium text-gray-600">Manually paid</span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )
                       )}
                     </div>
 
                     {/* 8. Action — only button or empty, centered in column */}
                     <div className="col-cell flex justify-center overflow-hidden">
-                      {canCancel(booking) && !isBookingInPast(booking) && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelBooking(booking._id)}
-                          disabled={actionLoadingId === booking._id}
-                          className="px-4 py-2 text-sm font-semibold text-red-800 bg-red-100 rounded-xl hover:bg-red-200 disabled:opacity-50 transition"
-                        >
-                          {actionLoadingId === booking._id ? 'Cancelling...' : 'Cancel'}
-                        </button>
-                      )}
-                      {canCancel(booking) && isBookingInPast(booking) && (
-                        <span className="text-xs text-gray-500">Past booking</span>
-                      )}
-                      {canRefund(booking) && (
-                        <button
-                          type="button"
-                          onClick={() => handleRequestRefund(booking._id)}
-                          disabled={actionLoadingId === booking._id}
-                          className="px-4 py-2 rounded-xl font-medium text-sm bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50 transition"
-                        >
-                          {actionLoadingId === booking._id ? 'Processing...' : 'Apply for refund'}
-                        </button>
-                      )}
-                      {booking.status === 'cancelled' && booking.paymentStatus === 'refunded' && (
-                        <span className="text-sm text-purple-600 font-medium">Refunded</span>
+                      {isCancelView && (
+                        <>
+                          {/* Show Cancel for future, not-completed bookings */}
+                          {canCancel(booking) && !isBookingInPast(booking) && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelBooking(booking._id)}
+                              disabled={actionLoadingId === booking._id}
+                              className="px-4 py-2 text-sm font-semibold text-red-800 bg-red-100 rounded-xl hover:bg-red-200 disabled:opacity-50 transition"
+                            >
+                              {actionLoadingId === booking._id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          )}
+
+                          {/* After cancelling, show Apply for refund */}
+                          {canRefund(booking) && !canCancel(booking) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRequestRefund(booking._id)}
+                              disabled={actionLoadingId === booking._id}
+                              className="px-4 py-2 text-sm font-semibold text-purple-800 bg-purple-100 rounded-xl hover:bg-purple-200 disabled:opacity-50 transition"
+                            >
+                              {actionLoadingId === booking._id ? 'Submitting...' : 'Apply for refund'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

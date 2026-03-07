@@ -16,6 +16,7 @@ const Homepage = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [showChatPrompt, setShowChatPrompt] = useState(false);
   const notificationRef = useRef(null);
 
   const [activeOffers, setActiveOffers] = useState([]);
@@ -452,23 +453,48 @@ const Homepage = () => {
             )}
           </div>
 
-          {/* Message / Chat icon - outline bubble + gradient notification badge (green to purple) */}
+          {/* Message / Chat icon also acts as chat notification for users */}
           {user && user.role !== 'admin' && (
-            <Link
-              to="/chat"
-              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
-              title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
-              aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              {chatUnreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
-                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-                </span>
+            <div className="relative">
+              <Link
+                to="/chat"
+                onClick={(e) => {
+                  if (chatUnreadCount > 0) {
+                    e.preventDefault();
+                    setShowChatPrompt((prev) => !prev);
+                  }
+                }}
+                className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
+                title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
+                aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                {chatUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
+                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* When there are unread messages, show a small bubble prompting user to read chat */}
+              {showChatPrompt && chatUnreadCount > 0 && (
+                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg border border-indigo-100 p-3 z-40">
+                  <p className="text-xs text-gray-800 font-medium">
+                    Admin has sent you a message.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = '/chat'; }}
+                    className="mt-2 inline-flex items-center text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Read it
+                    <span className="ml-1">→</span>
+                  </button>
+                </div>
               )}
-            </Link>
+            </div>
           )}
           {user && user.role === 'admin' && (
             <Link
