@@ -258,7 +258,7 @@ const MyBookings = () => {
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Amount</div>
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Status</div>
               <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell">Payment</div>
-              
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wider col-cell text-center">Action</div>
             </div>
 
             <div className="space-y-3 pt-1">

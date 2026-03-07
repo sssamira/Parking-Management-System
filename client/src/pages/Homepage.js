@@ -16,7 +16,10 @@ const Homepage = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+<<<<<<< HEAD
   const [showChatPrompt, setShowChatPrompt] = useState(false);
+=======
+>>>>>>> 18b59cde49b26ec4a6f0f1c23fb271fa731b5703
   const notificationRef = useRef(null);
 
   const [activeOffers, setActiveOffers] = useState([]);
@@ -453,6 +456,7 @@ const Homepage = () => {
             )}
           </div>
 
+<<<<<<< HEAD
           {/* Message / Chat icon also acts as chat notification for users */}
           {user && user.role !== 'admin' && (
             <div className="relative">
@@ -495,6 +499,25 @@ const Homepage = () => {
                 </div>
               )}
             </div>
+=======
+          {/* Message / Chat icon - outline bubble + gradient notification badge (green to purple) */}
+          {user && user.role !== 'admin' && (
+            <Link
+              to="/chat"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
+              title={chatUnreadCount > 0 ? 'New messages from admin' : 'Chat with admin'}
+              aria-label={chatUnreadCount > 0 ? 'Chat with admin (new messages)' : 'Open chat'}
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-tr from-[#00CC66] to-[#6633FF] px-1 text-[11px] font-bold text-white shadow-sm">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              )}
+            </Link>
+>>>>>>> 18b59cde49b26ec4a6f0f1c23fb271fa731b5703
           )}
           {user && user.role === 'admin' && (
             <Link
@@ -542,7 +565,7 @@ const Homepage = () => {
       <div className="max-w-6xl mx-auto px-4 lg:px-0 mt-12 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* User Only - Hide these boxes for admins */}
-          {user && user.role !== 'admin' && (
+          {user && (!user.role || user.role === 'user') && (
             <>
               <Link
                   to="/book-spot"
@@ -740,6 +763,21 @@ const Homepage = () => {
               <h3 className="text-xl font-semibold text-indigo-900 mb-2">Add Spot to Parking Places</h3>
               <p className="text-gray-600 leading-relaxed">
                 Admin: Add new parking spots to the system. Manage parking availability and locations.
+              </p>
+            </Link>
+          )}
+
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin/spot-requests"
+              className="group rounded-3xl bg-white shadow-[0_20px_60px_-25px_rgba(59,130,246,0.35)] p-8 border border-blue-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_-28px_rgba(59,130,246,0.45)] transition"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 text-3xl mb-4">
+                📝
+              </div>
+              <h3 className="text-xl font-semibold text-indigo-900 mb-2">Approve Parking Spots</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Review parking owner requests and approve to create the parking lot and requested spots.
               </p>
             </Link>
           )}

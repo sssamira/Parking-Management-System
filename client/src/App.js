@@ -29,6 +29,12 @@ import Faq from './pages/Faq';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
 import TermsConditions from './pages/TermsConditions';
+import OwnerLogin from './pages/OwnerLogin';
+import OwnerRegister from './pages/OwnerRegister';
+import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerSpotRequests from './pages/OwnerSpotRequests';
+import AdminSpotRequests from './pages/AdminSpotRequests';
+import OwnerApprovalStatus from './pages/OwnerApprovalStatus';
 import Footer from './components/Footer';
 import ParkSmarterLogo from './components/ParkSmarterLogo';
 import ScrollToTop from './components/ScrollToTop';
@@ -41,6 +47,16 @@ function App() {
       return null;
     }
   });
+
+  const parsedUser = (() => {
+    try {
+      return user ? JSON.parse(user) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  const isOwner = parsedUser && (parsedUser.role === 'owner' || parsedUser.role === 'parkingowner');
 
   // Update user state when localStorage changes
   useEffect(() => {
@@ -79,7 +95,7 @@ function App() {
               path="/"
               element={
                 user ? (
-                  <Homepage />
+                  isOwner ? <OwnerDashboard /> : <Homepage />
                 ) : (
                   <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
                     {/* Grid Pattern Overlay */}
@@ -177,6 +193,13 @@ function App() {
                               className="block w-full py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg text-center transition-all shadow-lg hover:shadow-xl"
                             >
                               Registration
+                            </Link>
+
+                            <Link
+                              to="/owner/login"
+                              className="block w-full mt-4 py-3 border border-indigo-300 text-indigo-100 hover:bg-indigo-500/20 rounded-lg font-semibold text-base text-center transition-all"
+                            >
+                              Sign in as Parking Owner
                             </Link>
                             
                             {/* Security Message */}

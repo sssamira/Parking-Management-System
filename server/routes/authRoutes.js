@@ -1,5 +1,16 @@
 import express from 'express';
-import { register, login, getMe, googleAuth, savePaymentMethod, removePaymentMethod, forgotPassword, resetPassword } from '../controllers/authController.js';
+import {
+  register,
+  login,
+  getMe,
+  googleAuth,
+  savePaymentMethod,
+  removePaymentMethod,
+  forgotPassword,
+  resetPassword,
+  registerOwner,
+  ownerLogin,
+} from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/validation.js';
 import { body } from 'express-validator';
@@ -58,11 +69,37 @@ const resetPasswordValidation = [
   handleValidationErrors,
 ];
 
+const ownerRegisterValidation = [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('phone').trim().notEmpty().withMessage('Phone number is required'),
+  body('driverLicense').trim().notEmpty().withMessage('Driver license number is required'),
+  body('address').trim().notEmpty().withMessage('Address is required'),
+  handleValidationErrors,
+];
+
+const ownerLoginValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail()
+    .toLowerCase(),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+  handleValidationErrors,
+];
 // Routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
 router.post('/reset-password', resetPasswordValidation, resetPassword);
+router.post('/register-owner', ownerRegisterValidation, registerOwner);
+router.post('/owner/login', ownerLoginValidation, ownerLogin);
 router.post('/google', googleAuth);
 router.get('/me', protect, getMe);
 router.post('/payment-method', protect, savePaymentMethod);

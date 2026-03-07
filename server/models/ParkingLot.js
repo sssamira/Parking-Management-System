@@ -45,7 +45,15 @@ const parkingLotSchema = new mongoose.Schema({
       type: String,
       default: '22:00'
     }
-  }
+  }, 
+  ownerId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  },
+  
+  status: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'], default: 'approved' }
 }, {
   timestamps: true
 });
