@@ -138,15 +138,7 @@ const Footer = () => {
                 <span className="text-emerald-300 mr-2">📍</span>
                 Gulshan, Dhaka
               </p>
-              <p>
-<<<<<<< HEAD
-                
-                
-=======
-                <span className="text-emerald-300 mr-2">⏱</span>
-                Delivery Time: Inside Dhaka 1–3 days • Outside Dhaka 2–5 days
->>>>>>> 18b59cde49b26ec4a6f0f1c23fb271fa731b5703
-              </p>
+             
             </div>
           </div>
         </div>
