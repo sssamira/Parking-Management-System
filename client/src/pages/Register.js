@@ -24,7 +24,7 @@ const Register = () => {
   const [showNumberInput, setShowNumberInput] = useState(false);
   const [numberOfVehicles, setNumberOfVehicles] = useState(1);
 
-  const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'];
+  const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Bike','Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'];
 
   const finalizeRegistration = (payload) => {
     if (payload.token) {
@@ -753,7 +753,7 @@ const Register = () => {
 
                     <div>
                       <label htmlFor={`vehicle.${index}.carType`} className="block text-sm font-medium text-gray-700">
-                        Car Type *
+                        Vehicle Type *
                       </label>
                       <select
                         id={`vehicle.${index}.carType`}
@@ -779,7 +779,7 @@ const Register = () => {
 
                     <div>
                       <label htmlFor={`vehicle.${index}.carModel`} className="block text-sm font-medium text-gray-700">
-                        Car Model *
+                        Vehicle Model *
                       </label>
                       <input
                         id={`vehicle.${index}.carModel`}
@@ -800,7 +800,7 @@ const Register = () => {
 
                     <div>
                       <label htmlFor={`vehicle.${index}.carColor`} className="block text-sm font-medium text-gray-700">
-                        Car Color *
+                        Vehicle Color *
                       </label>
                       <input
                         id={`vehicle.${index}.carColor`}
@@ -821,7 +821,7 @@ const Register = () => {
 
                     <div>
                       <label htmlFor={`vehicle.${index}.carYear`} className="block text-sm font-medium text-gray-700">
-                        Car Year *
+                        Vehicle Year *
                       </label>
                       <input
                         id={`vehicle.${index}.carYear`}
