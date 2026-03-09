@@ -1,24 +1,30 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/OwnerApprovalStatus.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
 const OwnerApprovalStatus = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      navigate('/owner/login');
+      return;
+    }
+
     try {
-      const userData = JSON.parse(localStorage.getItem('user') || 'null');
-      const isOwner = userData && (userData.role === 'owner' || userData.role === 'parkingowner');
-      if (!isOwner) {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser && (parsedUser.role === 'owner' || parsedUser.role === 'parkingowner')) {
+        setUser(parsedUser);
+        fetchMyRequests();
+      } else {
         navigate('/owner/login');
-        return;
       }
-      setUser(userData);
-      fetchMyRequests();
     } catch (e) {
       navigate('/owner/login');
     }
@@ -27,59 +33,152 @@ const OwnerApprovalStatus = () => {
   const fetchMyRequests = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await api.get('/spot-requests/mine');
-      setRequests(response.data?.requests || []);
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to load your requests');
+      setRequests(response.data?.requests || response.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load your requests. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'pending':
+      default:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
     }
   };
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eef3ff] to-[#dfe8ff] py-8 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6">
-        <div className="mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Approval Status
+            </h1>
+            <p className="mt-1 text-gray-600 dark:text-gray-400">
+              Track the status of your parking spot creation requests
+            </p>
+          </div>
+
           <button
             onClick={() => navigate('/')}
-            className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
+            className="mt-4 sm:mt-0 inline-flex items-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-colors"
           >
-            ← Back to Home
+            ← Back to Dashboard
           </button>
         </div>
 
-        <h1 className="text-2xl font-bold text-indigo-900">Approval Status</h1>
-        <p className="text-gray-600 mt-1 mb-4">Track your pending, approved, and rejected spot requests.</p>
+        {/* Error */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={fetchMyRequests}
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
-        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">{error}</div>}
-
+        {/* Loading */}
         {loading ? (
-          <p className="text-gray-600">Loading requests...</p>
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <span className="ml-4 text-lg text-gray-600 dark:text-gray-300">
+              Loading your requests...
+            </span>
+          </div>
         ) : requests.length === 0 ? (
-          <p className="text-gray-600">No requests submitted yet.</p>
+          /* Empty State */
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10 text-center">
+            <div className="text-6xl mb-6 text-gray-300 dark:text-gray-600">📭</div>
+            <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
+              No Requests Yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+              You haven't submitted any parking spot requests. Create one to get started!
+            </p>
+            <button
+              onClick={() => navigate('/owner/spot-requests')}
+              className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-md transition-colors"
+            >
+              Create New Request →
+            </button>
+          </div>
         ) : (
-          <div className="space-y-3 max-h-[620px] overflow-auto">
+          /* Requests List */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {requests.map((request) => (
-              <div key={request._id} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-indigo-900">{request.parkingLotName}</p>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    request.status === 'approved'
-                      ? 'bg-green-100 text-green-700'
-                      : request.status === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {request.status}
-                  </span>
+              <div
+                key={request._id}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300"
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      {request.parkingLotName || 'Unnamed Request'}
+                    </h3>
+                    <span
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(
+                        request.status
+                      )}`}
+                    >
+                      {request.status?.charAt(0).toUpperCase() + request.status?.slice(1) || 'Pending'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Area:</strong>{' '}
+                      {request.area || 'N/A'}
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Floor:</strong>{' '}
+                      {request.floor || 'N/A'}
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Spots:</strong>{' '}
+                      {request.numberOfSpots || 0}
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Price/hour:</strong>{' '}
+                      ৳{request.pricePerHour || 'N/A'}
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Submitted:</strong>{' '}
+                      {request.createdAt
+                        ? new Date(request.createdAt).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : 'N/A'}
+                    </p>
+                  </div>
+
+                  {request.adminNote && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        Admin Note:
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {request.adminNote}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mt-1">Area: {request.area} | Floor: {request.floor}</p>
-                <p className="text-sm text-gray-600">Spots: {request.numberOfSpots} | Price: ৳{request.pricePerHour}</p>
-                {request.adminNote && (
-                  <p className="text-sm text-gray-700 mt-2">Admin note: {request.adminNote}</p>
-                )}
               </div>
             ))}
           </div>

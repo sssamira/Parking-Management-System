@@ -35,22 +35,30 @@ const AdminSpotRequests = () => {
     }
   };
 
-  const handleApprove = async (id) => {
-    try {
-      setProcessingId(id);
-      setError('');
-      setSuccess('');
-      const response = await api.patch(`/spot-requests/admin/${id}/approve`, {});
-      const createdCount = response.data?.spotCreationResult?.count || 0;
-      const lotCreated = response.data?.lotCreated ? ' and parking lot created' : '';
-      setSuccess(`Request approved${lotCreated}. ${createdCount} spot(s) created.`);
-      setRequests((prev) => prev.filter((r) => r._id !== id));
-    } catch (e) {
-      setError(e.response?.data?.message || 'Approve failed');
-    } finally {
-      setProcessingId('');
-    }
-  };
+const handleApprove = async (id) => {
+  if (!window.confirm('Approve this request and create spots?')) return;
+
+  try {
+    setProcessingId(id);
+    setError('');
+    setSuccess('');
+
+    const response = await api.patch(`/spot-requests/admin/${id}/approve`, {});
+
+    console.log('Approve response:', response.data); // ← add this for debugging
+
+    const createdCount = response.data?.spotCreationResult?.count || 0;
+    const lotCreated = response.data?.lotCreated ? ' and parking lot created' : '';
+
+    setSuccess(`Request approved${lotCreated}. ${createdCount} spot(s) created.`);
+    setRequests((prev) => prev.filter((r) => r._id !== id));
+  } catch (err) {
+    console.error('Approve error:', err.response?.data || err.message); // ← add this
+    setError(err.response?.data?.message || err.message || 'Failed to approve request');
+  } finally {
+    setProcessingId('');
+  }
+};
 
   const handleReject = async (id) => {
     try {

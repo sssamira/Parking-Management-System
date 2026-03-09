@@ -24,17 +24,18 @@ import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
 import AdminReports from './pages/AdminReports';
+import AdminSpotRequests from './pages/AdminSpotRequests'; // ← added for approval page
 import ContactUs from './pages/ContactUs';
 import RefundPolicy from './pages/ReturnRefundPolicy';
 import Faq from './pages/Faq';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
 import TermsConditions from './pages/TermsConditions';
+
 import OwnerLogin from './pages/OwnerLogin';
 import OwnerRegister from './pages/OwnerRegister';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OwnerSpotRequests from './pages/OwnerSpotRequests';
-import AdminSpotRequests from './pages/AdminSpotRequests';
 import OwnerApprovalStatus from './pages/OwnerApprovalStatus';
 
 import Footer from './components/Footer';
@@ -60,6 +61,10 @@ function App() {
 
   const isOwner = parsedUser && (parsedUser.role === 'owner' || parsedUser.role === 'parkingowner');
 
+  // Modal states
+  const [showOwnerRegister, setShowOwnerRegister] = useState(false);
+  const [showOwnerLogin, setShowOwnerLogin] = useState(false);
+
   useEffect(() => {
     const checkUser = () => {
       try {
@@ -72,7 +77,6 @@ function App() {
     };
 
     checkUser();
-
     window.addEventListener('storage', checkUser);
     window.addEventListener('localStorageChange', checkUser);
 
@@ -82,12 +86,25 @@ function App() {
     };
   }, []);
 
+  // Prevent body scroll when any modal is open
+  useEffect(() => {
+    if (showOwnerRegister || showOwnerLogin) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showOwnerRegister, showOwnerLogin]);
+
   return (
     <Router>
       <ScrollToTop />
       <div className="relative min-h-screen flex flex-col">
         <div className="relative z-10 flex-1 flex flex-col">
           <Routes>
+            {/* Root route: logged-in owners see dashboard, others see landing */}
             <Route
               path="/"
               element={
@@ -199,19 +216,21 @@ function App() {
                               </p>
 
                               <div className="grid grid-cols-2 gap-4">
-                                <Link
-                                  to="/owner/login"
+                                <button
+                                  type="button"
+                                  onClick={() => setShowOwnerLogin(true)}
                                   className="py-3 border border-indigo-400/70 text-indigo-200 hover:bg-indigo-900/30 rounded-lg font-medium text-center transition-colors"
                                 >
                                   Sign In
-                                </Link>
+                                </button>
 
-                                <Link
-                                  to="/owner/register"
+                                <button
+                                  type="button"
+                                  onClick={() => setShowOwnerRegister(true)}
                                   className="py-3 border border-indigo-400/70 text-indigo-200 hover:bg-indigo-900/30 rounded-lg font-medium text-center transition-colors"
                                 >
                                   Sign Up
-                                </Link>
+                                </button>
                               </div>
                             </div>
 
@@ -226,34 +245,17 @@ function App() {
 
                       {/* Feature Cards at Bottom */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 pb-8">
-                        {/* Smart Analytics Card */}
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
-                          <h3 className="text-xl font-semibold text-white mb-2">
-                            Smart Analytics
-                          </h3>
-                          <p className="text-gray-200">
-                            AI-powered insights for optimal space utilization
-                          </p>
+                          <h3 className="text-xl font-semibold text-white mb-2">Smart Analytics</h3>
+                          <p className="text-gray-200">AI-powered insights for optimal space utilization</p>
                         </div>
-
-                        {/* Contactless Payment Card */}
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
-                          <h3 className="text-xl font-semibold text-white mb-2">
-                            Contactless Payment
-                          </h3>
-                          <p className="text-gray-200">
-                            Seamless transactions with multiple payment options
-                          </p>
+                          <h3 className="text-xl font-semibold text-white mb-2">Contactless Payment</h3>
+                          <p className="text-gray-200">Seamless transactions with multiple payment options</p>
                         </div>
-
-                        {/* Mobile First Card */}
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
-                          <h3 className="text-xl font-semibold text-white mb-2">
-                            Mobile First
-                          </h3>
-                          <p className="text-gray-200">
-                            Manage everything from your smartphone
-                          </p>
+                          <h3 className="text-xl font-semibold text-white mb-2">Mobile First</h3>
+                          <p className="text-gray-200">Manage everything from your smartphone</p>
                         </div>
                       </div>
                     </div>
@@ -262,6 +264,22 @@ function App() {
               }
             />
 
+            {/* Owner routes */}
+            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+            <Route path="/owner/spot-requests" element={<OwnerSpotRequests />} />
+            <Route path="/owner/approval-status" element={<OwnerApprovalStatus />} />
+
+            {/* Admin routes */}
+            <Route path="/admin/spots" element={<AdminSpots />} />
+            <Route path="/admin/bookings" element={<AdminBookings />} />
+            <Route path="/admin/feedback" element={<AdminFeedback />} />
+            <Route path="/admin/fines" element={<AdminFines />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
+            <Route path="/admin/add-offer" element={<AddOffer />} />
+            <Route path="/admin/spot-requests" element={<AdminSpotRequests />} /> {/* ← fixed route for approve spots */}
+
+            {/* Other public routes */}
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -271,20 +289,11 @@ function App() {
             <Route path="/all-spots" element={<AllSpots />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/my-feedback" element={<MyFeedback />} />
-            <Route path="/admin/spots" element={<AdminSpots />} />
-            <Route path="/admin/bookings" element={<AdminBookings />} />
-            <Route path="/admin/feedback" element={<AdminFeedback />} />
-            <Route path="/admin/fines" element={<AdminFines />} />
-            <Route path="/my-fines" element={<UserFines />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/admin/chat" element={<AdminChat />} />
             <Route path="/payment-method" element={<PaymentMethod />} />
             <Route path="/my-bookings" element={<MyBookings />} />
-            <Route path="/admin/add-offer" element={<AddOffer />} />
-            <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
             <Route path="/live-map" element={<LiveMap />} />
-            <Route path="/admin/reports" element={<AdminReports />} />
-            <Route path="/admin/*" element={<AdminReports />} />
             <Route path="/contact-us" element={<ContactUs />} />
             <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/faq" element={<Faq />} />
@@ -292,7 +301,24 @@ function App() {
             <Route path="/about-us" element={<AboutUs />} />
             <Route path="/terms-and-conditions" element={<TermsConditions />} />
           </Routes>
+
+          {/* Owner Register Modal */}
+          {showOwnerRegister && (
+            <OwnerRegister
+              isOpen={showOwnerRegister}
+              onClose={() => setShowOwnerRegister(false)}
+            />
+          )}
+
+          {/* Owner Login Modal */}
+          {showOwnerLogin && (
+            <OwnerLogin
+              isOpen={showOwnerLogin}
+              onClose={() => setShowOwnerLogin(false)}
+            />
+          )}
         </div>
+
         <Footer />
       </div>
     </Router>
