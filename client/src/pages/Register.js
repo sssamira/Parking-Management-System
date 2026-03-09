@@ -24,7 +24,7 @@ const Register = () => {
   const [showNumberInput, setShowNumberInput] = useState(false);
   const [numberOfVehicles, setNumberOfVehicles] = useState(1);
 
-  const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Bike','Truck', 'Van', 'Motorcycle', 'Other', 'Emergency Vehicle', 'Fire Truck', 'Ambulance'];
+  const carTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Bike','Truck', 'Van', 'Motorcycle', 'Emergency Vehicle', 'Fire Truck', 'Ambulance', 'Others'];
 
   const finalizeRegistration = (payload) => {
     if (payload.token) {

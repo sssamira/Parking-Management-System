@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+
 import Register from './pages/Register';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -35,6 +36,7 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import OwnerSpotRequests from './pages/OwnerSpotRequests';
 import AdminSpotRequests from './pages/AdminSpotRequests';
 import OwnerApprovalStatus from './pages/OwnerApprovalStatus';
+
 import Footer from './components/Footer';
 import ParkSmarterLogo from './components/ParkSmarterLogo';
 import ScrollToTop from './components/ScrollToTop';
@@ -58,7 +60,6 @@ function App() {
 
   const isOwner = parsedUser && (parsedUser.role === 'owner' || parsedUser.role === 'parkingowner');
 
-  // Update user state when localStorage changes
   useEffect(() => {
     const checkUser = () => {
       try {
@@ -70,12 +71,9 @@ function App() {
       }
     };
 
-    // Check immediately
     checkUser();
 
-    // Listen for storage changes (for cross-tab/window updates)
     window.addEventListener('storage', checkUser);
-    // Listen for custom event (for same-window updates)
     window.addEventListener('localStorageChange', checkUser);
 
     return () => {
@@ -88,7 +86,6 @@ function App() {
     <Router>
       <ScrollToTop />
       <div className="relative min-h-screen flex flex-col">
-        {/* Content Container - grows to push footer to bottom */}
         <div className="relative z-10 flex-1 flex flex-col">
           <Routes>
             <Route
@@ -99,7 +96,7 @@ function App() {
                 ) : (
                   <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
                     {/* Grid Pattern Overlay */}
-                    <div 
+                    <div
                       className="absolute inset-0 opacity-10"
                       style={{
                         backgroundImage: `
@@ -109,7 +106,7 @@ function App() {
                         backgroundSize: '50px 50px'
                       }}
                     ></div>
-                    
+
                     <div className="relative z-10 min-h-screen flex flex-col px-6 md:px-12 lg:px-16 py-8">
                       {/* Top Left Badge */}
                       <div className="mb-12">
@@ -118,7 +115,7 @@ function App() {
                           <span className="text-white font-medium">Next-Gen Parking Solution</span>
                         </div>
                       </div>
-                      
+
                       {/* Main Content Area */}
                       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Left Side Content */}
@@ -133,12 +130,12 @@ function App() {
                               </span>
                             </h1>
                           </div>
-                          
+
                           {/* Descriptive Text */}
                           <p className="text-xl md:text-2xl text-white leading-relaxed">
                             Experience the future of parking management. AI-powered, seamless, and designed for the modern world.
                           </p>
-                          
+
                           {/* Feature List */}
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
@@ -155,7 +152,7 @@ function App() {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Right Side - Get Started Panel */}
                         <div className="flex justify-center lg:justify-end">
                           <div className="w-full max-w-md bg-gray-800 bg-opacity-60 backdrop-blur-sm rounded-2xl p-8 border border-purple-500 border-opacity-30 shadow-2xl">
@@ -163,17 +160,17 @@ function App() {
                             <div className="flex justify-center mb-6">
                               <ParkSmarterLogo size={80} className="flex-shrink-0" />
                             </div>
-                            
+
                             {/* Heading */}
                             <h2 className="text-3xl font-bold text-white text-center mb-2">
                               Get Started
                             </h2>
-                            
+
                             {/* Sub-heading */}
                             <p className="text-gray-300 text-center mb-8">
                               Choose your path to better parking
                             </p>
-                            
+
                             {/* Login Button */}
                             <Link
                               to="/login"
@@ -181,12 +178,12 @@ function App() {
                             >
                               Login
                             </Link>
-                            
+
                             {/* Separator */}
                             <div className="flex items-center justify-center my-6">
                               <span className="text-gray-400">or</span>
                             </div>
-                            
+
                             {/* Registration Button */}
                             <Link
                               to="/register"
@@ -195,13 +192,29 @@ function App() {
                               Registration
                             </Link>
 
-                            <Link
-                              to="/owner/login"
-                              className="block w-full mt-4 py-3 border border-indigo-300 text-indigo-100 hover:bg-indigo-500/20 rounded-lg font-semibold text-base text-center transition-all"
-                            >
-                              Sign in as Parking Owner
-                            </Link>
-                            
+                            {/* Owner Section */}
+                            <div className="pt-6 border-t border-gray-700 mt-4">
+                              <p className="text-center text-gray-300 mb-5">
+                                Are you a parking owner?
+                              </p>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <Link
+                                  to="/owner/login"
+                                  className="py-3 border border-indigo-400/70 text-indigo-200 hover:bg-indigo-900/30 rounded-lg font-medium text-center transition-colors"
+                                >
+                                  Sign In
+                                </Link>
+
+                                <Link
+                                  to="/owner/register"
+                                  className="py-3 border border-indigo-400/70 text-indigo-200 hover:bg-indigo-900/30 rounded-lg font-medium text-center transition-colors"
+                                >
+                                  Sign Up
+                                </Link>
+                              </div>
+                            </div>
+
                             {/* Security Message */}
                             <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-gray-700">
                               <span className="text-green-400 text-xl">🛡️</span>
@@ -210,7 +223,7 @@ function App() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Feature Cards at Bottom */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 pb-8">
                         {/* Smart Analytics Card */}
@@ -222,7 +235,7 @@ function App() {
                             AI-powered insights for optimal space utilization
                           </p>
                         </div>
-                        
+
                         {/* Contactless Payment Card */}
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
                           <h3 className="text-xl font-semibold text-white mb-2">
@@ -232,7 +245,7 @@ function App() {
                             Seamless transactions with multiple payment options
                           </p>
                         </div>
-                        
+
                         {/* Mobile First Card */}
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
                           <h3 className="text-xl font-semibold text-white mb-2">
@@ -248,6 +261,7 @@ function App() {
                 )
               }
             />
+
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
