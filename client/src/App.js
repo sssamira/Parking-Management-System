@@ -24,7 +24,7 @@ import AddOffer from './pages/AddOffer';
 import AdminVehicleLookup from './pages/AdminVehicleLookup';
 import LiveMap from './pages/LiveMap';
 import AdminReports from './pages/AdminReports';
-import AdminSpotRequests from './pages/AdminSpotRequests'; // ← added for approval page
+import AdminSpotRequests from './pages/AdminSpotRequests';
 import ContactUs from './pages/ContactUs';
 import RefundPolicy from './pages/ReturnRefundPolicy';
 import Faq from './pages/Faq';
@@ -104,7 +104,6 @@ function App() {
       <div className="relative min-h-screen flex flex-col">
         <div className="relative z-10 flex-1 flex flex-col">
           <Routes>
-            {/* Root route: logged-in owners see dashboard, others see landing */}
             <Route
               path="/"
               element={
@@ -243,16 +242,69 @@ function App() {
                         </div>
                       </div>
 
+                      {/* === How Park Smarter Works Section (smaller fonts like in your edited image) === */}
+                      <div className="mt-16 mb-20 text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
+                          How Park Smarter Works
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 max-w-6xl mx-auto px-4">
+                          {/* Step 1 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-purple-500/30 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                            <div className="mx-auto mb-5 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600/90 text-white text-4xl md:text-5xl shadow-lg">
+                              📍
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
+                              Find & Book
+                            </h3>
+                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                              Search real-time spots<br />
+                              See price & availability
+                            </p>
+                          </div>
+
+                          {/* Step 2 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-purple-500/30 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                            <div className="mx-auto mb-5 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600/90 text-white text-4xl md:text-5xl shadow-lg">
+                              💳
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
+                              Park & Pay
+                            </h3>
+                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                              
+                              Pay via bKash/Nagad/Card
+                            </p>
+                          </div>
+
+                          {/* Step 3 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-purple-500/30 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                            <div className="mx-auto mb-5 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600/90 text-white text-4xl md:text-5xl shadow-lg">
+                              😊
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
+                              Enjoy & Save
+                            </h3>
+                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                              Enjoy the best service everytime
+                              
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Feature Cards at Bottom */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 pb-8">
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
                           <h3 className="text-xl font-semibold text-white mb-2">Smart Analytics</h3>
                           <p className="text-gray-200">AI-powered insights for optimal space utilization</p>
                         </div>
+
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
                           <h3 className="text-xl font-semibold text-white mb-2">Contactless Payment</h3>
                           <p className="text-gray-200">Seamless transactions with multiple payment options</p>
                         </div>
+
                         <div className="bg-gradient-to-br from-blue-800 to-purple-800 rounded-xl p-6 shadow-lg">
                           <h3 className="text-xl font-semibold text-white mb-2">Mobile First</h3>
                           <p className="text-gray-200">Manage everything from your smartphone</p>
@@ -277,7 +329,7 @@ function App() {
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/vehicle-lookup" element={<AdminVehicleLookup />} />
             <Route path="/admin/add-offer" element={<AddOffer />} />
-            <Route path="/admin/spot-requests" element={<AdminSpotRequests />} /> {/* ← fixed route for approve spots */}
+            <Route path="/admin/spot-requests" element={<AdminSpotRequests />} />
 
             {/* Other public routes */}
             <Route path="/register" element={<Register />} />
