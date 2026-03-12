@@ -219,12 +219,7 @@ const Login = () => {
             Enter your credentials to access your account.
           </p>
 
-          <Link
-            to="/owner/login"
-            className="block w-full mb-6 text-center py-2.5 border border-indigo-300 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-50 transition-colors"
-          >
-            Sign in as Parking Owner
-          </Link>
+
           
           {/* Success/Error Messages */}
           {success && (

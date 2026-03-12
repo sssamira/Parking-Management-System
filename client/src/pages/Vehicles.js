@@ -66,7 +66,6 @@ const Vehicles = () => {
       return;
     }
     
-    // Create array of empty vehicle forms
     const newVehicles = Array.from({ length: numberOfVehicles }, () => ({
       licensePlate: '',
       carType: '',
@@ -85,7 +84,6 @@ const Vehicles = () => {
     setError('');
     setSubmitting(true);
 
-    // Validate all vehicles
     for (let i = 0; i < bulkVehicles.length; i++) {
       const vehicle = bulkVehicles[i];
       if (!vehicle.licensePlate || !vehicle.carType || !vehicle.carModel || !vehicle.carColor || !vehicle.carYear) {
@@ -96,12 +94,10 @@ const Vehicles = () => {
     }
 
     try {
-      // Add vehicles one by one
       for (const vehicle of bulkVehicles) {
         await api.post('/vehicles', vehicle);
       }
       
-      // Reset form
       setBulkVehicles([]);
       setShowAddForm(false);
       setNumberOfVehicles(1);
@@ -176,189 +172,116 @@ const Vehicles = () => {
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
-  };
-
   if (loading) {
     return (
-      <div className="relative min-h-screen">
-        {/* Fixed Background */}
-        <div 
-          className="fixed inset-0 z-0"
-          style={{
-            backgroundImage: 'url(https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iA7GVdn9DpeY/v1/-1x-1.webp)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        ></div>
-        
-        {/* Overlay for better readability */}
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
-        
-        {/* Loading Content */}
-        <div className="relative z-10 min-h-screen flex items-center justify-center">
-          <div className="text-center bg-white bg-opacity-95 backdrop-blur-sm p-8 rounded-lg shadow-xl">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading vehicles...</p>
-          </div>
+      <div className="min-h-screen bg-[#f0f4ff] flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-10 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading vehicles...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen">
-      {/* Fixed Background */}
-      <div 
-        className="fixed inset-0 z-0"
-        style={{
-          backgroundImage: 'url(https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iA7GVdn9DpeY/v1/-1x-1.webp)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      ></div>
-      
-      {/* Overlay for better readability */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-0"></div>
-      
-      {/* Content Container */}
-      <div className="relative z-10 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-        <div className="mb-4 flex justify-between items-center">
+    <div className="min-h-screen bg-[#f0f4ff]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header & Navigation */}
+        <div className="mb-8 bg-white rounded-xl shadow p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-indigo-900">My Vehicles</h1>
+              <p className="text-gray-600 mt-1">Manage your registered vehicles</p>
+            </div>
+            {/* No buttons here anymore */}
+          </div>
+        </div>
+
+        {/* Back to Home */}
+        <div className="mb-6">
           <Link
             to="/"
-            className="text-indigo-600 hover:text-indigo-800 font-medium"
+            className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
           >
             ← Back to Home
           </Link>
-          <div className="flex gap-2"></div>
-            <Link
-              to="/feedback"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              Submit Feedback
-            </Link>
-            <Link
-              to="/my-feedback"
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-            >
-              View My Feedback
-            </Link>
-
-    
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none"
-          >
-            Logout
-          </button>
         </div>
-        <div className="bg-white bg-opacity-95 backdrop-blur-sm shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">My Vehicles</h1>
-            {!showAddForm && !showNumberInput && (
-              <button
-                onClick={() => setShowNumberInput(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                + Add Vehicle
-              </button>
-            )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          {/* Number Input Form */}
-          {showNumberInput && !showAddForm && (
-            <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-blue-50">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                How many vehicles do you want to add?
-              </h2>
-              <form onSubmit={handleNumberSubmit} className="flex items-end gap-4">
-                <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Vehicles (Minimum: 1)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        value={numberOfVehicles}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          if (value < 1) {
-                            setNumberOfVehicles(1);
-                          } else {
-                            setNumberOfVehicles(value);
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const value = parseInt(e.target.value) || 1;
-                          if (value < 1) {
-                            setNumberOfVehicles(1);
-                          }
-                        }}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        placeholder="Enter number (minimum 1)"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        You can add as many vehicles as you want (minimum 1)
-                      </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    Continue
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNumberInput(false);
-                      setNumberOfVehicles(1);
-                    }}
-                    className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Bulk Vehicle Forms */}
-          {showAddForm && bulkVehicles.length > 0 && (
-            <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-gray-50">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Add {bulkVehicles.length} Vehicle{bulkVehicles.length > 1 ? 's' : ''}
-                </h2>
+        {/* Number Input Form for Bulk Add */}
+        {showNumberInput && !showAddForm && (
+          <div className="mb-8 bg-white rounded-xl shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              How many vehicles do you want to add?
+            </h2>
+            <form onSubmit={handleNumberSubmit} className="flex flex-col sm:flex-row items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Vehicles (Minimum: 1)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={numberOfVehicles}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    setNumberOfVehicles(value < 1 ? 1 : value);
+                  }}
+                  className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter number"
+                />
+              </div>
+              <div className="flex gap-3">
                 <button
+                  type="submit"
+                  className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
+                >
+                  Continue
+                </button>
+                <button
+                  type="button"
                   onClick={cancelForm}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none text-sm"
+                  className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                 >
                   Cancel
                 </button>
               </div>
-              <form onSubmit={handleBulkSubmit} className="space-y-6">
+            </form>
+          </div>
+        )}
+
+        {/* Bulk Add / Edit Form */}
+        {showAddForm && (
+          <div className="mb-8 bg-white rounded-xl shadow p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {editingVehicle ? 'Edit Vehicle' : `Add ${bulkVehicles.length} Vehicle${bulkVehicles.length > 1 ? 's' : ''}`}
+              </h2>
+              <button
+                onClick={cancelForm}
+                className="px-5 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {bulkVehicles.length > 0 ? (
+              <form onSubmit={handleBulkSubmit} className="space-y-8">
                 {bulkVehicles.map((vehicle, index) => (
-                  <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white">
+                  <div key={index} className="border border-gray-200 rounded-xl p-6 bg-gray-50">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
                       Vehicle {index + 1}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           License Plate *
                         </label>
                         <input
@@ -366,32 +289,30 @@ const Vehicles = () => {
                           required
                           value={vehicle.licensePlate}
                           onChange={(e) => handleBulkVehicleChange(index, 'licensePlate', e.target.value.toUpperCase())}
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm uppercase"
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           style={{ textTransform: 'uppercase' }}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Car Type *
                         </label>
                         <select
                           required
                           value={vehicle.carType}
                           onChange={(e) => handleBulkVehicleChange(index, 'carType', e.target.value)}
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                          <option value="">Select car type</option>
-                          {carTypes.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
+                          <option value="">Select type</option>
+                          {carTypes.map(type => (
+                            <option key={type} value={type}>{type}</option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Car Model *
                         </label>
                         <input
@@ -399,12 +320,12 @@ const Vehicles = () => {
                           required
                           value={vehicle.carModel}
                           onChange={(e) => handleBulkVehicleChange(index, 'carModel', e.target.value)}
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Car Color *
                         </label>
                         <input
@@ -412,12 +333,12 @@ const Vehicles = () => {
                           required
                           value={vehicle.carColor}
                           onChange={(e) => handleBulkVehicleChange(index, 'carColor', e.target.value)}
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Car Year *
                         </label>
                         <input
@@ -427,35 +348,28 @@ const Vehicles = () => {
                           max={new Date().getFullYear() + 1}
                           value={vehicle.carYear}
                           onChange={(e) => handleBulkVehicleChange(index, 'carYear', e.target.value)}
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                     </div>
                   </div>
                 ))}
+
                 <div className="flex justify-end">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-8 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition shadow-sm"
                   >
-                    {submitting ? 'Adding Vehicles...' : `Add ${bulkVehicles.length} Vehicle${bulkVehicles.length > 1 ? 's' : ''}`}
+                    {submitting ? 'Adding...' : `Add ${bulkVehicles.length} Vehicle${bulkVehicles.length > 1 ? 's' : ''}`}
                   </button>
                 </div>
               </form>
-            </div>
-          )}
-
-          {/* Single Vehicle Edit Form */}
-          {showAddForm && editingVehicle && bulkVehicles.length === 0 && (
-            <div className="mb-6 border border-gray-200 rounded-lg p-6 bg-gray-50">
-              <h2 className="text-xl font-semibold mb-4">
-                Edit Vehicle
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ) : editingVehicle && (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       License Plate *
                     </label>
                     <input
@@ -464,13 +378,13 @@ const Vehicles = () => {
                       required
                       value={formData.licensePlate}
                       onChange={handleChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm uppercase"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       style={{ textTransform: 'uppercase' }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Car Type *
                     </label>
                     <select
@@ -478,19 +392,17 @@ const Vehicles = () => {
                       required
                       value={formData.carType}
                       onChange={handleChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="">Select car type</option>
-                      {carTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
+                      <option value="">Select type</option>
+                      {carTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Car Model *
                     </label>
                     <input
@@ -499,12 +411,12 @@ const Vehicles = () => {
                       required
                       value={formData.carModel}
                       onChange={handleChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Car Color *
                     </label>
                     <input
@@ -513,12 +425,12 @@ const Vehicles = () => {
                       required
                       value={formData.carColor}
                       onChange={handleChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Car Year *
                     </label>
                     <input
@@ -529,102 +441,104 @@ const Vehicles = () => {
                       max={new Date().getFullYear() + 1}
                       value={formData.carYear}
                       onChange={handleChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
 
-                <div className="flex space-x-4">
+                <div className="flex gap-4 justify-end">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                   >
-                    {editingVehicle ? 'Update Vehicle' : 'Add Vehicle'}
+                    Update Vehicle
                   </button>
                   <button
                     type="button"
                     onClick={cancelForm}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
+                    className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                   >
                     Cancel
                   </button>
                 </div>
               </form>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {vehicles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No vehicles registered yet.</p>
-              <button
-                onClick={() => setShowNumberInput(true)}
-                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+        {/* Vehicle List */}
+        {vehicles.length === 0 ? (
+          <div className="bg-white rounded-xl shadow p-12 text-center">
+            <div className="text-7xl mb-6">🚗</div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+              No Vehicles Registered Yet
+            </h3>
+            <p className="text-gray-600 mb-8">
+              Add your first vehicle to get started.
+            </p>
+            <button
+              onClick={() => setShowNumberInput(true)}
+              className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition shadow-md"
+            >
+              + Add Your First Vehicle
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vehicles.map((vehicle) => (
+              <div
+                key={vehicle._id}
+                className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow border border-gray-200 overflow-hidden"
               >
-                Add Your First Vehicle
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {vehicles.map((vehicle) => (
-                  <div
-                    key={vehicle._id}
-                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {vehicle.licensePlate}
-                      </h3>
-                      <div className="flex space-x-2">
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {vehicle.licensePlate}
+                    </h3>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleEdit(vehicle)}
+                        className="text-indigo-600 hover:text-indigo-800 text-xl"
+                        title="Edit"
+                      >
+                        ✏️
+                      </button>
+                      {vehicles.length > 1 && (
                         <button
-                          onClick={() => handleEdit(vehicle)}
-                          className="text-indigo-600 hover:text-indigo-800"
-                          title="Edit"
+                          onClick={() => handleDelete(vehicle._id)}
+                          className="text-red-600 hover:text-red-800 text-xl"
+                          title="Delete"
                         >
-                          ✏️
+                          🗑️
                         </button>
-                        {vehicles.length > 1 && (
-                          <button
-                            onClick={() => handleDelete(vehicle._id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><span className="font-medium">Type:</span> {vehicle.carType}</p>
-                      <p><span className="font-medium">Model:</span> {vehicle.carModel}</p>
-                      <p><span className="font-medium">Color:</span> {vehicle.carColor}</p>
-                      <p><span className="font-medium">Year:</span> {vehicle.carYear}</p>
+                      )}
                     </div>
                   </div>
-                ))}
+
+                  <div className="space-y-2 text-gray-700">
+                    <p><span className="font-medium">Type:</span> {vehicle.carType}</p>
+                    <p><span className="font-medium">Model:</span> {vehicle.carModel}</p>
+                    <p><span className="font-medium">Color:</span> {vehicle.carColor}</p>
+                    <p><span className="font-medium">Year:</span> {vehicle.carYear}</p>
+                  </div>
+                </div>
               </div>
-              
-              {/* Add More Vehicle Button - Always visible when vehicles exist */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => {
-                    setShowNumberInput(true);
-                    setShowAddForm(false);
-                    setBulkVehicles([]);
-                  }}
-                  className="px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-md"
-                >
-                  + Add More Vehicle
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+            ))}
+
+            {/* Add More Button */}
+            <div className="col-span-full text-center mt-6">
+              <button
+                onClick={() => setShowNumberInput(true)}
+                className="px-8 py-4 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition shadow-md"
+              >
+                + Add More Vehicle
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default Vehicles;
-
