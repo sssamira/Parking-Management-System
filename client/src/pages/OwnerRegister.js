@@ -1,15 +1,15 @@
-// src/pages/OwnerRegister.jsx
 import React, { useState } from 'react';
 import api from '../utils/api';
 
 const OwnerRegister = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
-    name: '',               // ← added (required by backend)
+    name: '',
     businessName: '',
     email: '',
     phone: '',
-
-    location: '',
+    address: '',          // ← NEW: required field
+    location: '',         // optional / secondary
+    driverLicense: '',    // if backend still needs it
     password: '',
     confirmPassword: '',
   });
@@ -23,7 +23,7 @@ const OwnerRegister = ({ isOpen, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError('');
+    setError(''); // clear error on change
   };
 
   const handleSubmit = async (e) => {
@@ -32,26 +32,34 @@ const OwnerRegister = ({ isOpen, onClose }) => {
     setError('');
     setSuccess(false);
 
+    // Client-side validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
+    if (!formData.address.trim()) {
+      setError('Address is required');
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = {
-        name: formData.name.trim(),                 // ← sent to backend
+        name: formData.name.trim(),
         businessName: formData.businessName.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
-        address: formData.address.trim(),           // ← sent to backend
-        driverLicense: formData.driverLicense.trim(), // ← sent to backend
-        location: formData.location.trim(),
+        address: formData.address.trim(),           // ← FIXED: sending address
+        location: formData.location.trim() || formData.address.trim(), // fallback
+        driverLicense: formData.driverLicense?.trim() || undefined,
         password: formData.password,
       };
 
       const response = await api.post('/auth/register-owner', payload);
 
+      // Handle successful registration
       if (response.data?.token) {
         localStorage.setItem('token', response.data.token);
       }
@@ -67,7 +75,9 @@ const OwnerRegister = ({ isOpen, onClose }) => {
         window.location.href = '/owner/dashboard';
       }, 1500);
     } catch (err) {
-      const message = err.response?.data?.message || 'Registration failed. Please try again.';
+      const message = err.response?.data?.message 
+        || err.response?.data?.error 
+        || 'Registration failed. Please try again.';
       setError(message);
     } finally {
       setLoading(false);
@@ -87,7 +97,7 @@ const OwnerRegister = ({ isOpen, onClose }) => {
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-[9999] flex h-10 w-10 items-center justify-center rounded-full bg-purple-900/80 text-white hover:bg-purple-700 transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-          aria-label="Close registration modal"
+          aria-label="Close"
           title="Close"
         >
           <span className="text-3xl leading-none font-normal">×</span>
@@ -121,7 +131,7 @@ const OwnerRegister = ({ isOpen, onClose }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Owner Name (sent as "name") */}
+            {/* Owner Name */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Owner Name</label>
               <div className="relative">
@@ -172,7 +182,7 @@ const OwnerRegister = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Phone Number */}
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Phone Number</label>
               <div className="relative">
@@ -183,15 +193,17 @@ const OwnerRegister = ({ isOpen, onClose }) => {
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+880 1X XXXX XXXX"
                   className="block w-full rounded-xl border border-purple-700/50 bg-purple-950/60 px-12 py-3.5 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Address (required by backend) */}
+            {/* Address – NOW REQUIRED AND VISIBLE */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Address</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Business Address <span className="text-red-400">*</span>
+              </label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-purple-400 text-xl">🏠</span>
                 <input
@@ -200,32 +212,15 @@ const OwnerRegister = ({ isOpen, onClose }) => {
                   required
                   value={formData.address}
                   onChange={handleChange}
-                  placeholder="123 Main St, City, Country"
+                  placeholder="House 12, Road 5, Gulshan, Dhaka"
                   className="block w-full rounded-xl border border-purple-700/50 bg-purple-950/60 px-12 py-3.5 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Driver License (required by backend) */}
+            {/* Optional: Location / Area (if different from address) */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Driver License Number</label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-purple-400 text-xl">🪪</span>
-                <input
-                  type="text"
-                  name="driverLicense"
-                  required
-                  value={formData.driverLicense}
-                  onChange={handleChange}
-                  placeholder="DL-123456789"
-                  className="block w-full rounded-xl border border-purple-700/50 bg-purple-950/60 px-12 py-3.5 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Parking Location (optional – keep if needed) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Parking Location </label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Location / Area (optional)</label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-purple-400 text-xl">📍</span>
                 <input
@@ -233,7 +228,23 @@ const OwnerRegister = ({ isOpen, onClose }) => {
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  placeholder="123 Main St, City"
+                  placeholder="Gulshan, Dhaka"
+                  className="block w-full rounded-xl border border-purple-700/50 bg-purple-950/60 px-12 py-3.5 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Driver License (if backend still requires it) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Driver License Number (optional)</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-purple-400 text-xl">🪪</span>
+                <input
+                  type="text"
+                  name="driverLicense"
+                  value={formData.driverLicense}
+                  onChange={handleChange}
+                  placeholder="DL-123456789"
                   className="block w-full rounded-xl border border-purple-700/50 bg-purple-950/60 px-12 py-3.5 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
