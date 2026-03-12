@@ -242,7 +242,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* === How Park Smarter Works Section (smaller fonts like in your edited image) === */}
+                      {/* How Park Smarter Works – with icons and smaller fonts */}
                       <div className="mt-16 mb-20 text-center">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
                           How Park Smarter Works
@@ -257,7 +257,7 @@ function App() {
                             <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
                               Find & Book
                             </h3>
-                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                            <p className="text-gray-200 text-sm md:text-base leading-relaxed">
                               Search real-time spots<br />
                               See price & availability
                             </p>
@@ -271,9 +271,9 @@ function App() {
                             <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
                               Park & Pay
                             </h3>
-                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                            <p className="text-gray-200 text-sm md:text-base leading-relaxed">
                               
-                              Pay via bKash/Nagad/Card
+                              Pay via bKash/Nagad/Card/cash
                             </p>
                           </div>
 
@@ -285,9 +285,92 @@ function App() {
                             <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
                               Enjoy & Save
                             </h3>
-                            <p className="text-gray-200 text-base md:text-lg leading-relaxed">
+                            <p className="text-gray-200 text-sm md:text-base leading-relaxed">
                               Enjoy the best service everytime
                               
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comparison Table */}
+                      <div className="mt-16 mb-20 text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
+                          Park Smarter vs Traditional Parking
+                        </h2>
+
+                        <div className="overflow-x-auto max-w-5xl mx-auto px-4">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-white/10 backdrop-blur-md border-b border-purple-500/30">
+                                <th className="p-4 md:p-5 text-sm md:text-base font-semibold text-white">Feature</th>
+                                <th className="p-4 md:p-5 text-sm md:text-base font-semibold text-gray-300">Traditional Parking</th>
+                                <th className="p-4 md:p-5 text-sm md:text-base font-semibold text-white bg-purple-600/40 rounded-tl-xl">
+                                  Park Smarter
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="text-gray-200 text-sm md:text-base">
+                              <tr className="border-b border-purple-500/20 hover:bg-white/5 transition-colors">
+                                <td className="p-4 md:p-5 font-medium">Find spot</td>
+                                <td className="p-4 md:p-5 text-gray-400">Drive around</td>
+                                <td className="p-4 md:p-5 text-green-400 font-bold">Real-time map</td>
+                              </tr>
+                              <tr className="border-b border-purple-500/20 hover:bg-white/5 transition-colors">
+                                <td className="p-4 md:p-5 font-medium">Payment</td>
+                                <td className="p-4 md:p-5 text-gray-400">Cash only</td>
+                                <td className="p-4 md:p-5 text-green-400 font-bold">bKash/Card/cash</td>
+                              </tr>
+                              <tr className="border-b border-purple-500/20 hover:bg-white/5 transition-colors">
+                                <td className="p-4 md:p-5 font-medium">Security risk</td>
+                                <td className="p-4 md:p-5 text-gray-400">High</td>
+                                <td className="p-4 md:p-5 text-green-400 font-bold">Zero</td>
+                              </tr>
+                             
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* === NEW: What Our Users Say – Testimonials === */}
+                      <div className="mt-16 mb-20 text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8">
+                          What Our Users Say
+                        </h2>
+
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent mb-10"></div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 max-w-6xl mx-auto px-4">
+                          {/* Testimonial 1 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-purple-500/30 shadow-xl">
+                            <div className="text-2xl text-yellow-400 mb-4">★★★★☆</div>
+                            <p className="text-gray-200 text-lg italic mb-4">
+                              “Finally found parking in Gulshan in 2 minutes!”
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              — Sarah K., Banani
+                            </p>
+                          </div>
+
+                          {/* Testimonial 2 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-purple-500/30 shadow-xl">
+                            <div className="text-2xl text-yellow-400 mb-4">★★★★★</div>
+                            <p className="text-gray-200 text-lg italic mb-4">
+                              “Saved me ৳500+ per month on parking fines.”
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              — Rahim M., Dhanmondi
+                            </p>
+                          </div>
+
+                          {/* Testimonial 3 */}
+                          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-purple-500/30 shadow-xl">
+                            <div className="text-2xl text-yellow-400 mb-4">★★★★☆</div>
+                            <p className="text-gray-200 text-lg italic mb-4">
+                              “Easy for my parking lot to get new customers.”
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              — Business Owner, Uttara
                             </p>
                           </div>
                         </div>
